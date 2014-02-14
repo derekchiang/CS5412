@@ -4,11 +4,13 @@
 #[crate_type = "rlib"];
 
 pub trait HasAddress {
-    fn get_address() -> SocketAddr;
+    pub fn get_address() -> SocketAddr;
 }
 
 pub struct Messenger {
-
+    pub fn new(addr: SocketAddr) -> Messenger {
+        
+    }
 }
 
 impl Messenger {
