@@ -5,10 +5,10 @@
 
 #[cfg(test)]
 mod tests {
-    extern mod messenger;
+    extern mod russenger;
     
     #[test]
     fn do_something() {
-        messenger::hello();
+        println!("Hello World!");
     }
 }

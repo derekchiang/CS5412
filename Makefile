@@ -1,17 +1,17 @@
-all: messenger paxos
+all: russenger paxos
 
-messenger:
-	rustc src/messenger/lib.rs --out-dir ./build
+russenger:
+	# cd ../russenger && make
 
 paxos:
-	rustc src/paxos/lib.rs -L ./build --out-dir ./build
+	mkdir -p lib bin
+	rustc src/paxos/lib.rs --out-dir lib
 
 test:
-	rustc src/paxos/lib.rs -L ./build --test --out-dir ./build
-	./build/paxos
+	rustc src/paxos/lib.rs -L lib --test -o bin/test
+	./bin/test
 
 clean:
-	rm -rf ./build
-	mkdir ./build
+	rm -rf lib bin
 
-.PHONY: all messenger paxos test clean
+.PHONY: all russenger paxos test clean
