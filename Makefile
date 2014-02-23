@@ -5,7 +5,7 @@ russenger:
 
 paxos:
 	mkdir -p lib bin
-	rustc src/paxos/lib.rs --out-dir lib
+	rustc -O -L ../russenger/lib -L ../rust-msgpack/lib src/paxos/lib.rs --out-dir lib
 
 test:
 	rustc src/paxos/lib.rs -L lib --test -o bin/test
