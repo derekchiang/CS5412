@@ -1,26 +1,35 @@
+extern crate msgpack;
+extern crate serialize;
+
 pub type SlotNum = uint;
 pub type Proposal = (SlotNum, Command);
 
-#[deriving(Encodable, Decodable, Eq, Show, Clone)]
+#[deriving(Encodable, Decodable, Show, Clone)]
 pub struct Command {
+    // This really should be a SocketAddr, but annoyingly SocketAddr is
+    // neither encodable nor decodable, so we resort to using a str and
+    // convert it to/from SocketAddr as needed.
+    from: ~str,
     id: ~str,
     command_name: ~str,
     args: ~[~str]
 }
 
-// impl Eq for Command {
-//     fn eq(&self, that: &Command) -> bool {
-//         self.id == that.id
-//     }
-// }
+impl Eq for Command {
+    fn eq(&self, that: &Command) -> bool {
+        self.id == that.id
+    }
+}
 
 #[deriving(Encodable, Decodable, Show)]
-pub enum Message {
+pub enum Message<T> {
     // client to replica
     Request(Command),
 
     // leader to replica
     Decision(Proposal),
 
-    Accept,
+    Propose(Proposal),
+
+    Response(~str, T),
 }

@@ -5,6 +5,9 @@
 
 #[feature(macro_rules)];
 
+#[allow(dead_code)];
+
+extern crate msgpack;
 extern crate serialize;
 extern crate uuid;
 
@@ -16,7 +19,7 @@ mod replica;
 #[cfg(test)]
 mod tests {
     extern crate russenger;
-    
+
     #[test]
     fn do_something() {
         println!("Hello World!");
