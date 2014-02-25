@@ -3,6 +3,10 @@ extern crate serialize;
 
 pub type SlotNum = uint;
 pub type Proposal = (SlotNum, Command);
+pub type LeaderId = uint;
+#[deriving(TotalOrd)]
+pub type BallotNum = (uint, LeaderId);
+pub type Pvalue = (BallotNum, SlotNum, Command);
 
 #[deriving(Encodable, Decodable, Show, Clone)]
 pub struct Command {
@@ -32,4 +36,12 @@ pub enum Message<T> {
     Propose(Proposal),
 
     Response(~str, T),
+
+    P1a(BallotNum),
+
+    P1b(BallotNum, Pvalue),
+
+    P2a(Pvalue),
+
+    P2b(BallotNum),
 }

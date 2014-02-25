@@ -8,7 +8,7 @@ extern crate serialize;
 extern crate russenger;
 
 use std::io::net::ip::SocketAddr;
-use std::mem;
+// use std::mem;
 
 use serialize::{Encodable, Decodable};
 
@@ -25,9 +25,9 @@ pub trait StateMachine<'a, T> {
 }
 
 pub struct Replica<T, X> {
-    state: T,
-    slot_num: SlotNum,
-    next_slot_num: SlotNum,
+    state: T,  // Would we benefit by using ~T instead?
+    slot_num: SlotNum,  // specifies the slot where the next decision resides
+    next_slot_num: SlotNum,  // specifies the slot which the next proposal uses
     proposals: ~[Proposal],
     decisions: ~[Proposal],
     addr: SocketAddr,
@@ -41,21 +41,24 @@ pub struct Replica<T, X> {
 // which you can't call mutable function on that struct inside the loop.
 // Thus, this macro swaps out the list for the loop and swaps it in at
 // the end.
-macro_rules! mem_iter(($obj:ident, $my_lst:expr, $ops:expr) => {{
-    let lst = mem::replace(&mut $my_lst, ~[]);
-    for $obj in lst.iter() {
-        $ops;
-    }
-    mem::replace(&mut $my_lst, lst);
-}})
+// 
+// TODO: doesn't seem like we need it anymore?
+// 
+// macro_rules! mem_iter(($obj:ident, $my_lst:expr, $ops:expr) => {{
+//     let lst = mem::replace(&mut $my_lst, ~[]);
+//     for $obj in lst.iter() {
+//         $ops;
+//     }
+//     mem::replace(&mut $my_lst, lst);
+// }})
 
-impl<'a, X: Send + Encodable<Encoder<'a>> + Decodable<Decoder<'a>>, T: StateMachine<'a, X>> Replica<T, X> {
+impl<'a, T: StateMachine<'a, X>, X: Send + Encodable<Encoder<'a>> + Decodable<Decoder<'a>>> Replica<T, X> {
     pub fn new(addr: SocketAddr, leaders: ~[SocketAddr]) -> Replica<T, X> {
         let (port, chan) = russenger::new::<Message<X>>(addr.clone());
         Replica {
             state: StateMachine::new(),
             slot_num: 1u,
-            next_slot_num: 2u,
+            next_slot_num: 1u,
             proposals: ~[],
             decisions: ~[],
             addr: addr,
@@ -76,19 +79,19 @@ impl<'a, X: Send + Encodable<Encoder<'a>> + Decodable<Decoder<'a>>, T: StateMach
                     loop {
                         let mut to_perform = ~[];
                         let mut to_propose = ~[];
-                        mem_iter!(dec, self.decisions, {
+                        for dec in self.decisions.iter() {
                             let (s1, p1) = dec.clone();
                             if s1 == self.slot_num {
-                                mem_iter!(prop, self.proposals, {
+                                for prop in self.proposals.iter() {
                                     let (s2, p2) = prop.clone();
                                     if s2 == self.slot_num && p2 != p1 {
                                         to_propose.push(p2);
                                     }
-                                });
+                                }
                                 to_perform.push(p1);
                                 performed = true
                             }
-                        });
+                        }
                         to_propose.move_iter().map(|comm| self.propose(comm) );
                         to_perform.move_iter().map(|comm| self.perform(comm) );
                         if performed == false { break; }
@@ -126,6 +129,10 @@ impl<'a, X: Send + Encodable<Encoder<'a>> + Decodable<Decoder<'a>>, T: StateMach
             let res = self.state.invoke_command(comm.clone());
             self.slot_num += 1;
             self.chan.send((from_str(comm.from).unwrap(), Response(comm.id, res)));
+        }
+
+        if self.next_slot_num <= self.slot_num {
+            self.next_slot_num = self.slot_num + 1;
         }
     }
 }
