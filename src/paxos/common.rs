@@ -37,9 +37,9 @@ pub enum Message<T> {
 
     Response(~str, T),
 
-    P1a(BallotNum),
+    P1a(BallotNum, SlotNum),
 
-    P1b(BallotNum, Pvalue),
+    P1b(BallotNum, ~[Pvalue]),
 
     P2a(Pvalue),
 

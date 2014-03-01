@@ -7,8 +7,8 @@ extern crate msgpack;
 extern crate serialize;
 extern crate russenger;
 
+use std::fmt::Show;
 use std::io::net::ip::SocketAddr;
-// use std::mem;
 
 use serialize::{Encodable, Decodable};
 
@@ -52,7 +52,7 @@ pub struct Replica<T, X> {
 //     mem::replace(&mut $my_lst, lst);
 // }})
 
-impl<'a, T: StateMachine<'a, X>, X: Send + Encodable<Encoder<'a>> + Decodable<Decoder<'a>>> Replica<T, X> {
+impl<'a, T: StateMachine<'a, X>, X: Send + Show + Encodable<Encoder<'a>> + Decodable<Decoder<'a>>> Replica<T, X> {
     pub fn new(addr: SocketAddr, leaders: ~[SocketAddr]) -> Replica<T, X> {
         let (port, chan) = russenger::new::<Message<X>>(addr.clone());
         Replica {
@@ -72,7 +72,8 @@ impl<'a, T: StateMachine<'a, X>, X: Send + Encodable<Encoder<'a>> + Decodable<De
         loop {
             let (_, msg) = self.port.recv();
             match msg {
-                Request(c) => self.propose(c),
+                Request(c) => { self.propose(c) }
+                
                 Decision((snum, comm)) => {
                     self.decisions.push((snum, comm));
                     let mut performed = false;
@@ -96,8 +97,9 @@ impl<'a, T: StateMachine<'a, X>, X: Send + Encodable<Encoder<'a>> + Decodable<De
                         to_perform.move_iter().map(|comm| self.perform(comm) );
                         if performed == false { break; }
                     }
-                },
-                _ => info!("Receiving a wrong message"), 
+                }
+
+                _ => info!("Receiving a wrong message: {}", msg), 
             }
         }
     }
