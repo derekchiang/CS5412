@@ -16,6 +16,7 @@ pub use replica::StateMachine;
 mod common;
 mod replica;
 mod acceptor;
+mod leader;
 
 #[cfg(test)]
 mod tests {

@@ -8,6 +8,13 @@ pub type LeaderId = uint;
 pub type BallotNum = (uint, LeaderId);
 pub type Pvalue = (BallotNum, SlotNum, Command);
 
+// impl BallotNum {
+//     pub fn increment(self) -> BallotNum {
+//         let (n, lid) = self;
+//         (n+1, lid)
+//     }
+// }
+
 #[deriving(Encodable, Decodable, Show, Clone)]
 pub struct Command {
     // This really should be a SocketAddr, but annoyingly SocketAddr is
