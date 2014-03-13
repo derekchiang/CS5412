@@ -10,6 +10,7 @@
 extern crate msgpack;
 extern crate serialize;
 extern crate uuid;
+extern crate rand;
 
 pub use replica::StateMachine;
 
