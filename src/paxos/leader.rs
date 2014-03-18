@@ -11,7 +11,8 @@ use serialize::{Encodable, Decodable};
 
 use msgpack::{Encoder, Decoder};
 
-use common::{LeaderId, Proposal, BallotNum, SlotNum, Message};
+use common::{LeaderId, Proposal, BallotNum, SlotNum, Message, Pvalue, Decision};
+use common::{P1a, P1b, P2a, P2b};
 
 pub struct Leader<X> {
     id: LeaderId,
@@ -48,9 +49,105 @@ impl<'a, X: Send + Show + Encodable<Encoder<'a>> + Decodable<Decoder<'a>>> Leade
     }
 
     pub fn run(mut ~self) {
-        // self.spawn_scout();
+        self.spawn_scout(self, self.acceptors, ballot_num);
         loop {
             let msg = self.inner_rx.recv();
+            match msg {
+                Proposal(s_num, comm) => {
+                    if (!(chk_contains_slot(self.proposals, s_num))) { //if proposals does not contain this slot number already
+                        self.proposals = self.proposals.append(Proposal(s_num, comm));
+                        if (self.active) {
+                            spawn_commander(self, self.acceptors, self.replicas, (self.ballot_num, s_num, comm));
+                        }
+                    }
+                }
+                Adopted(b_num, pvalues) => {
+                    pvalues = pmax(pvalues);
+                    self.proposals = p_update(self.proposals, pvalues);
+                    for (s, p) in self.proposals {
+                        spawn_commander(self, self.acceptors, self.replicas, (self.ballot_num, s, p));
+                    }
+                    active = true;
+                }
+                Preempted((b_num, l_id)) => {
+                    let (curr_num, my_id) = self.ballot_num;
+                    if (b_num > curr_num) {
+                        active = false;
+                        self.ballot_num = (b_num + 1, self.id);
+                        spawn_scout(self, self.acceptors, self.ballot_num);
+                    }
+                }
+            }
+            
         }
+    }
+
+    //takes a list of proposals and a slot number, returns true if that list contains a proposal with that slot number
+    fn chk_contains_slot(proposals: ~[Proposal], s: uint) { //check these type annotations
+        for (s_num, comm) in proposals.iter() {
+            if (s_num == s) {
+                return true;
+            }
+        }
+    }
+
+    fn spawn_commander(&mut self, acceptors: ~[str], replicas: ~[str], pval: Pvalue) { //check these type annotations
+
+        let waiting_for = acceptors.clone();
+        for acc in acceptors.iter() {
+            self.tx.send((acc.clone(), P2a(pval)));
+        }
+        loop {
+            let (acc, msg) = self.inner_rx.recv(); //somehow?
+            match msg {
+                P2b((b_num, l_id)) => {
+                    let ((bal, lid), slt, comm) = pval; //make sure this doesnt cause problems with the ownerships
+                    if (b_num == bal) {
+                        waiting_for.remove(acc); //fix
+                        if (len(waiting_for) < len(acceptors) / 2) { //fix
+                            for rep in replicas.iter() {
+                                self.tx.send((rep.clone(), Decision(slt, comm)));
+                            }
+                            exit() //what do i do here
+                        }
+                    } else {
+                        self.inner_tx.send(Preempted((b_num, l_id))); //tell leader that this one has been preempted
+                        exit();
+                    }
+                }
+            } 
+        }
+
+    }
+
+    fn spawn_scout(&mut self, acceptors: ~[str], bal: BallotNum) {
+        let waiting_for = acceptors.clone();
+        let pvalues = ~[];
+        for acc in acceptors.iter() {
+            self.tx.send((acc.clone(), P1a((bal, self.id), self.lu_slot_num))); //hopefully correct parameters for the P1a
+        }
+        loop {
+            let (acc, msg) = self.inner_rx.recv(); //probably wrong
+            match msg {
+                P1b((b_num, l_id), pvals) => {
+                    if (b_num == bal) {
+                        pvalues = pvalues.union(pvals);
+                        waiting_for.remove(acc);
+                        if (len(waiting_for) < len(acceptors) / 2) { //fix
+                            self.inner_tx.send(Adopted(b_num, pvalues));
+                            exit();
+                        }
+                    } else {
+                        self.inner_tx.send(Preempted(b_num, l_id)); //tell leader that this one has been preempted
+                        exit();
+                    }
+
+                }
+            }
+
+
+        }
+
+
     }
 }

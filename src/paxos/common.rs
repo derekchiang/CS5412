@@ -44,7 +44,7 @@ pub enum Message<T> {
 
     Response(~str, T),
 
-    P1a(BallotNum, SlotNum),
+    P1a(BallotNum, SlotNum), //why does this need a slotnum?
 
     P1b(BallotNum, ~[Pvalue]),
 

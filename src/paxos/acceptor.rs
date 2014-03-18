@@ -56,7 +56,7 @@ impl<'a, X: Send + Show + Encodable<Encoder<'a>> + Decodable<Decoder<'a>>> Accep
                     self.tx.send((leader, P2b(self.ballot_num)));
                 }
 
-                _ => info!("Receiving a wrong message: {}", msg)
+//                _ => info!("Receiving a wrong message: {}", msg)
             }
         }
     }

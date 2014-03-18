@@ -99,7 +99,7 @@ impl<'a, T: StateMachine<'a, X>, X: Send + Show + Encodable<Encoder<'a>> + Decod
                     }
                 }
 
-                _ => info!("Receiving a wrong message: {}", msg), 
+//                _ => info!("Receiving a wrong message: {}", msg), 
             }
         }
     }
