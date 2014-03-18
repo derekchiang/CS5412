@@ -7,6 +7,11 @@
 
 #[allow(dead_code)];
 
+// TODO: get rid of this once msgpack has got rid of owned vector
+#[allow(deprecated_owned_vector)];
+
+#[feature(phase)];
+#[phase(syntax, link)] extern crate log;
 extern crate msgpack;
 extern crate serialize;
 extern crate uuid;

@@ -32,8 +32,8 @@ pub struct Replica<T, X> {
     decisions: ~[Proposal],
     addr: SocketAddr,
     leaders: ~[SocketAddr],
-    port: Port<(SocketAddr, Message<X>)>,
-    chan: Chan<(SocketAddr, Message<X>)>
+    tx: Sender<(SocketAddr, Message<X>)>,
+    rx: Receiver<(SocketAddr, Message<X>)>
 }
 
 // This macro helps to solve the problem that, when you iterate through
@@ -54,7 +54,7 @@ pub struct Replica<T, X> {
 
 impl<'a, T: StateMachine<'a, X>, X: Send + Show + Encodable<Encoder<'a>> + Decodable<Decoder<'a>>> Replica<T, X> {
     pub fn new(addr: SocketAddr, leaders: ~[SocketAddr]) -> Replica<T, X> {
-        let (port, chan) = russenger::new::<Message<X>>(addr.clone());
+        let (tx, rx) = russenger::new::<Message<X>>(addr.clone());
         Replica {
             state: StateMachine::new(),
             slot_num: 1u,
@@ -63,14 +63,14 @@ impl<'a, T: StateMachine<'a, X>, X: Send + Show + Encodable<Encoder<'a>> + Decod
             decisions: ~[],
             addr: addr,
             leaders: leaders,
-            port: port,
-            chan: chan,
+            tx: tx,
+            rx: rx
         }
     }
 
     pub fn run(mut ~self) {
         loop {
-            let (_, msg) = self.port.recv();
+            let (_, msg) = self.rx.recv();
             match msg {
                 Request(c) => { self.propose(c) }
                 
@@ -114,7 +114,7 @@ impl<'a, T: StateMachine<'a, X>, X: Send + Show + Encodable<Encoder<'a>> + Decod
         self.next_slot_num += 1;  // Figure out how next_slot_num works
         self.proposals.push(prop.clone());
         for leader in self.leaders.iter() {
-            self.chan.send((leader.clone(), Propose(prop.clone())));
+            self.tx.send((leader.clone(), Propose(prop.clone())));
         }
     }
 
@@ -130,7 +130,7 @@ impl<'a, T: StateMachine<'a, X>, X: Send + Show + Encodable<Encoder<'a>> + Decod
         } else {
             let res = self.state.invoke_command(comm.clone());
             self.slot_num += 1;
-            self.chan.send((from_str(comm.from).unwrap(), Response(comm.id, res)));
+            self.tx.send((from_str(comm.from).unwrap(), Response(comm.id, res)));
         }
 
         if self.next_slot_num <= self.slot_num {
