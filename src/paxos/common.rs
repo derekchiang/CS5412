@@ -51,4 +51,8 @@ pub enum Message<T> {
     P2a(Pvalue),
 
     P2b(BallotNum),
+
+    Adopted(BallotNum, ~[Pvalue]), //scout to leader
+
+    Preempted(BallotNum), //scout or commander to leader
 }
