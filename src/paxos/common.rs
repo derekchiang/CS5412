@@ -2,6 +2,7 @@ extern crate msgpack;
 extern crate serialize;
 
 pub type SlotNum = uint;
+#[deriving(Hash)]
 pub type Proposal = (SlotNum, Command);
 pub type LeaderId = uint;
 #[deriving(TotalOrd)]
@@ -15,7 +16,7 @@ pub type Pvalue = (BallotNum, SlotNum, Command);
 //     }
 // }
 
-#[deriving(Encodable, Decodable, Show, Clone)]
+#[deriving(Encodable, Decodable, Show, Clone, Hash)]
 pub struct Command {
     // This really should be a SocketAddr, but annoyingly SocketAddr is
     // neither encodable nor decodable, so we resort to using a str and

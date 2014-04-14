@@ -98,7 +98,7 @@ impl<'a, T: StateMachine<'a, X>, X: Send + Show + Encodable<Encoder<'a>> + Decod
                         if performed == false { break; }
                     }
                 }
-
+                _ => {} //need some debug statement here
 //                _ => info!("Receiving a wrong message: {}", msg), 
             }
         }

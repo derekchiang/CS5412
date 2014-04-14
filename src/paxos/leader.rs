@@ -2,10 +2,13 @@ extern crate msgpack;
 extern crate serialize;
 extern crate russenger;
 extern crate rand;
+extern crate collections;
 
 use std::fmt::Show;
 use std::io::net::ip::SocketAddr;
 use rand::random;
+
+use collections::hashmap::HashMap;
 
 use serialize::{Encodable, Decodable};
 
@@ -51,44 +54,51 @@ impl<'a, X: Send + Show + Encodable<Encoder<'a>> + Decodable<Decoder<'a>>> Leade
     }
 
     pub fn run(mut ~self) {
-        self.spawn_scout(self.acceptors, self.ballot_num);
+        self.spawn_scout(self.ballot_num);
         loop {
             let msg = self.inner_rx.recv();
             match msg {
                 Propose((s_num, comm)) => {
-                    if (!(self.chk_contains_slot(self.proposals, s_num))) { //if proposals does not contain this slot number already
-                        self.proposals.push((s_num, comm));
-                        if (self.active) {
-                            self.spawn_commander(self.acceptors, self.replicas, (self.ballot_num, s_num, comm));
+                    if !(self.chk_contains_slot(&self.proposals, s_num)) { //if proposals does not contain this slot number already
+                        self.proposals.push((s_num, comm.clone()));
+                        if self.active {
+                            spawn(self.spawn_commander((self.ballot_num, s_num, comm)));
+                           /* spawn(proc() {
+                                let commander = Commander::new();
+                                commander.run();
+                            }); */
                         }
                     }
                 }
                 Adopted(b_num, pvalues) => { //maybe check if this ballot number is the right one
                     let max_pvalues = self.pmax(pvalues);
-                    self.proposals = self.p_update(self.proposals, max_pvalues); // need to find out how to resolve this
-                    for (s, p) in self.proposals.iter() {
-                        self.spawn_commander(self.acceptors, self.replicas, (self.ballot_num, s, p));
+                    self.proposals = self.p_update(&self.proposals, max_pvalues); // need to find out how to resolve this
+                    let prop_clone = self.proposals.clone();
+                    for (s, p) in prop_clone.move_iter() {
+                        self.spawn_commander((self.ballot_num, s, p));
                     }
                     self.active = true;
                 }
-                Preempted((b_num, l_id)) => {
-                    let (curr_num, my_id) = self.ballot_num;
-                    if (b_num > curr_num) {
+                Preempted((b_num, _)) => {
+                    let (curr_num, _) = self.ballot_num;
+                    if b_num > curr_num {
                         self.active = false;
                         self.ballot_num = (b_num + 1, self.id);
-                        self.spawn_scout(self.acceptors, self.ballot_num);
+                        self.spawn_scout(self.ballot_num);
                     }
                 }
+                _ => {} //need some debug statement here 
             }
             
         }
     }
 
     //takes a list of proposals and a slot number, returns true if that list contains a proposal with that slot number
-    fn chk_contains_slot(~self, proposals: ~[Proposal], s: uint) -> bool{ //check these type annotations
-        for pr in proposals.iter() {
-            let (s_num, comm) = pr;
-            if (s_num == s) {
+    fn chk_contains_slot(&self, proposals: &~[Proposal], s: SlotNum) -> bool{ //check these type annotations
+        let prop_clone = proposals.clone();
+        for pr in prop_clone.move_iter() {
+            let (s_num, _) = pr;
+            if s_num == s {
                 return true;
             }
         }
@@ -96,37 +106,56 @@ impl<'a, X: Send + Show + Encodable<Encoder<'a>> + Decodable<Decoder<'a>>> Leade
     }
 
     fn pmax(&self, pvals: ~[Pvalue]) -> ~[Proposal] {
-        return ~[];
+        let mut new_pv : ~[Pvalue] = vec::new();
+        let mut ret : ~[Proposal] = vec::new();
+        for pv in pvals.move_iter() {
+            new_pv = pmax_helper(new_pv, pv);
+        }
+        for (_, sl, comm) in new_pv.move_iter() {
+            ret.push((sl, comm));
+        }
+        return ret;
     }
 
-    fn p_update(&self, orig: ~[Proposal], updates: ~[Proposal]) -> ~[Proposal] {
-       return orig;
+    fn pmax_helper(&self, pvals: ~[Pvalue], new_pval: Pvalue) -> ~[Pvalue] {
+        let ret : ~[Pvalue] = vec::new();
+        let ((bal, l), sl, comm) = new_pval;
+        for ((b2, l2), sl2, c2) in pvals.iter() {
+            if (sl == sl2 && bal > b2) {
+                ret.push(new_pval);
+            } else {
+                ret.push(((b2, l2), sl2, c2));
+            }
+        }
+        return ret;
     }
 
-    fn union<T>(&self, a: ~[T], b: ~[T]) -> ~[T] {
-        return a;
+    fn p_update(&self, orig: &~[Proposal], updates: ~[Proposal]) -> ~[Proposal] {
+        for pr in orig.iter() {
+            if !(chk_contains_slot(updates, pr)) {
+                updates.push(pr);
+            }
+       }
+       return updates;
     }
 
-    fn remove_ele<T>(&self, lst: ~[T], ele: T) -> ~[T] {
-        return lst;
-    }
-
-    fn spawn_commander(&mut self, acceptors: ~[SocketAddr], replicas: ~[SocketAddr], pval: Pvalue) { //check these type annotations
-
-        let waiting_for = acceptors.clone();
-        for acc in acceptors.iter() {
-            self.tx.send((acc.clone(), P2a(pval)));
+    fn spawn_commander(&mut self, pval: Pvalue) { //change this to an actual spawn
+        let acc_clone = self.acceptors.clone();
+        let rep_clone = self.replicas.clone();
+        let mut waiting_for = acc_clone.clone();
+        for acc in acc_clone.iter() {
+            self.tx.send((acc.clone(), P2a(pval.clone())));
         }
         loop {
             let (acc, msg) = self.rx.recv(); //somehow?
             match msg {
                 P2b((b_num, l_id)) => {
-                    let ((bal, lid), slt, comm) = pval; //make sure this doesnt cause problems with the ownerships
-                    if (b_num == bal) {
-                        self.remove_ele(waiting_for, acc);
-                        if (waiting_for.iter().len() < acceptors.iter().len() / 2) { //fix
-                            for rep in replicas.iter() {
-                                self.tx.send((rep.clone(), Decision((slt, comm))));
+                    let ((bal, _), slt, ref comm) = pval; //make sure this doesnt cause problems with the ownerships
+                    if b_num == bal {
+                        waiting_for.remove(acc);
+                        if waiting_for.iter().len() < acc_clone.iter().len() / 2 { //fix
+                            for rep in rep_clone.iter() {
+                                self.tx.send((rep.clone(), Decision((slt, comm.clone()))));
                             }
                             break;
                         }
@@ -135,26 +164,31 @@ impl<'a, X: Send + Show + Encodable<Encoder<'a>> + Decodable<Decoder<'a>>> Leade
                         break;
                     }
                 }
+
+                _ => {} //need some debug statement here
             } 
         }
 
     }
 
-    fn spawn_scout(&mut self, acceptors: ~[SocketAddr], bal: BallotNum) {
-        let waiting_for = acceptors.clone();
-        let pvalues = ~[];
-        for acc in acceptors.iter() {
+    fn spawn_scout(&mut self, bal: BallotNum) { //change this to an actual spawn
+        let mut waiting_for = self.acceptors.clone();
+        let acc_clone = self.acceptors.clone();
+        let mut pvalues = HashSet::new();
+        for acc in acc_clone.iter() {
             self.tx.send((acc.clone(), P1a(bal, self.lu_slot_num))); //hopefully correct parameters for the P1a
         }
         loop {
             let (acc, msg) = self.rx.recv(); //probably wrong
             match msg {
                 P1b((b_num, l_id), pvals) => {
-                    let (my_b, my_id) = bal;
-                    if (b_num == my_b) {
-                        pvalues = self.union(pvalues, pvals);
-                        self.remove_ele(waiting_for, acc);
-                        if (waiting_for.iter().len() < acceptors.iter().len() / 2) { //fix
+                    let (my_b, _) = bal;
+                    if b_num == my_b {
+                        for pv in pvals.move_iter() {
+                            pvalues.insert(pv);
+                        }
+                        waiting_for.remove(acc);
+                        if waiting_for.iter().len() < acc_clone.iter().len() / 2 { //fix
                             self.inner_tx.send(Adopted((b_num, l_id), pvalues));
                             break;
                         }
@@ -164,6 +198,8 @@ impl<'a, X: Send + Show + Encodable<Encoder<'a>> + Decodable<Decoder<'a>>> Leade
                     }
 
                 }
+
+                _ => {} //need some debug statement here
             }
 
 

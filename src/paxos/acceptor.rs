@@ -57,6 +57,7 @@ impl<'a, X: Send + Show + Encodable<Encoder<'a>> + Decodable<Decoder<'a>>> Accep
                 }
 
 //                _ => info!("Receiving a wrong message: {}", msg)
+                _ => {} //need some debug statement here
             }
         }
     }
