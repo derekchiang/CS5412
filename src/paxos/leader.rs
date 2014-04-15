@@ -140,70 +140,20 @@ impl<'a, X: Send + Show + Encodable<Encoder<'a>> + Decodable<Decoder<'a>>> Leade
     }
 
     fn spawn_commander(&mut self, pval: Pvalue) { //change this to an actual spawn
-        let acc_clone = self.acceptors.clone();
-        let rep_clone = self.replicas.clone();
-        let mut waiting_for = acc_clone.clone();
-        for acc in acc_clone.iter() {
-            self.tx.send((acc.clone(), P2a(pval.clone())));
-        }
-        loop {
-            let (acc, msg) = self.rx.recv(); //somehow?
-            match msg {
-                P2b((b_num, l_id)) => {
-                    let ((bal, _), slt, ref comm) = pval; //make sure this doesnt cause problems with the ownerships
-                    if b_num == bal {
-                        waiting_for.remove(acc);
-                        if waiting_for.iter().len() < acc_clone.iter().len() / 2 { //fix
-                            for rep in rep_clone.iter() {
-                                self.tx.send((rep.clone(), Decision((slt, comm.clone()))));
-                            }
-                            break;
-                        }
-                    } else {
-                        self.inner_tx.send(Preempted((b_num, l_id))); //tell leader that this one has been preempted
-                        break;
-                    }
-                }
-
-                _ => {} //need some debug statement here
-            } 
-        }
+       spawn(proc() {
+        let addr = "";
+        let commander = Commander::new(addr, self.acceptors.clone(), self.replicas.clone(), pval);
+        commander::run();
+       });
 
     }
 
     fn spawn_scout(&mut self, bal: BallotNum) { //change this to an actual spawn
-        let mut waiting_for = self.acceptors.clone();
-        let acc_clone = self.acceptors.clone();
-        let mut pvalues = HashSet::new();
-        for acc in acc_clone.iter() {
-            self.tx.send((acc.clone(), P1a(bal, self.lu_slot_num))); //hopefully correct parameters for the P1a
-        }
-        loop {
-            let (acc, msg) = self.rx.recv(); //probably wrong
-            match msg {
-                P1b((b_num, l_id), pvals) => {
-                    let (my_b, _) = bal;
-                    if b_num == my_b {
-                        for pv in pvals.move_iter() {
-                            pvalues.insert(pv);
-                        }
-                        waiting_for.remove(acc);
-                        if waiting_for.iter().len() < acc_clone.iter().len() / 2 { //fix
-                            self.inner_tx.send(Adopted((b_num, l_id), pvalues));
-                            break;
-                        }
-                    } else {
-                        self.inner_tx.send(Preempted((b_num, l_id))); //tell leader that this one has been preempted
-                        break;
-                    }
-
-                }
-
-                _ => {} //need some debug statement here
-            }
-
-
-        }
+        spawn(proc() {
+            let addr = "";
+            let scout = Scout::new(addr, self.acceptors.clone(), self.lu_slot_num, bal);
+            scout::run();
+        });
 
 
     }

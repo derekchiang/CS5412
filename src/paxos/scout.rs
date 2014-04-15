@@ -1,3 +1,17 @@
+extern crate msgpack;
+extern crate serialize;
+extern crate russenger;
+
+use std::fmt::Show;
+use std::io::net::ip::SocketAddr;
+
+use serialize::{Encodable, Decodable};
+
+use msgpack::{Encoder, Decoder};
+
+use common::{LeaderId, Proposal, BallotNum, SlotNum, Message, Pvalue, Decision, Propose, Adopted, Preempted};
+use common::{P1a, P1b, P2a, P2b};
+
 pub struct Scout<X> {
     acceptors: ~[SocketAddr],
     lu_slot_num: SlotNum,

@@ -1,3 +1,21 @@
+extern crate msgpack;
+extern crate serialize;
+extern crate russenger;
+
+use std::fmt::Show;
+use std::io::net::ip::SocketAddr;
+
+use serialize::{Encodable, Decodable};
+
+use msgpack::{Encoder, Decoder};
+
+use common::{LeaderId, Proposal, BallotNum, SlotNum, Message, Pvalue, Decision, Propose, Adopted, Preempted};
+use common::{P1a, P1b, P2a, P2b};
+
+
+
+
+
 pub struct Commander<X> {
 	acceptors: ~[SocketAddr],
 	replicas: ~[SocketAddr],
@@ -9,7 +27,7 @@ pub struct Commander<X> {
 }
 
 impl<'a, X: Send + Show + Encodable<Encoder<'a>> + Decodable<Decoder<'a>>> Commander<X> {
-	pub fn new(acceptors: ~[SocketAddr], replicas: ~[SocketAddr], pval: Pvalue, addr: SocketAddr) {
+	pub fn new(addr: SocketAddr, acceptors: ~[SocketAddr], replicas: ~[SocketAddr], pval: Pvalue) {
 		let (tx, rx) = russenger::new::<Message<X>>(addr.clone());
         let (inner_tx, inner_rx) = channel();
         Leader {
