@@ -2,9 +2,6 @@
 // 1. There seems to be a lot of code that tests for the existence of certain
 // elements in an array, and currently we are simply iterating the arrays.
 // We should optimize the search routine. (binary search? bloom filters?)
-
-extern crate serialize;
-
 use std::fmt::Show;
 use std::io::net::ip::SocketAddr;
 use std::io::IoError;
