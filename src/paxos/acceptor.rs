@@ -1,5 +1,4 @@
 use std::fmt::Show;
-use std::io::net::ip::SocketAddr;
 use std::io::IoError;
 
 use serialize::json;
@@ -22,7 +21,7 @@ impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, j
     pub fn new(sid: ServerID) -> Acceptor<X> {
         let bb = Busybee::new(sid, common::lookup(sid), 1, BusybeeMapper::new(common::lookup));
         Acceptor {
-            ballot_num: (0u, 0u),
+            ballot_num: (0u64, 0u64),
             accepted: ~[],
             bb: bb,
         }
@@ -32,17 +31,12 @@ impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, j
         loop {
             let (leader, msg): (ServerID, Message<X>) = self.bb.recv_object().unwrap();
             match msg {
-                P1a(bnum, snum) => {
+                P1a(bnum) => {
                     if bnum > self.ballot_num {
                         self.ballot_num = bnum;
                     }
 
-                    let pvalues_to_respond = self.accepted.iter().filter_map(|pvalue| {
-                        let &(_, slot_num, _) = pvalue;
-                        if slot_num >= snum { Some(pvalue.clone()) } else { None }
-                    }).collect();
-
-                    self.bb.send_object::<Message<X>>(leader, P1b(self.ballot_num, pvalues_to_respond));
+                    self.bb.send_object::<Message<X>>(leader, P1b(self.ballot_num, self.accepted.clone()));
                 }
 
                 P2a(pvalue) => {

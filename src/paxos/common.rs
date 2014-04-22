@@ -7,15 +7,13 @@ use std::path::Path;
 use serialize::json;
 use serialize::{Encodable, Decodable};
 
-use busybee::BusybeeMapper;
-
 pub type ServerID = u64;
-pub type SlotNum = uint;
+pub type SlotNum = u64;
 #[deriving(Hash)]
 pub type Proposal = (SlotNum, Command);
-pub type LeaderId = uint;
+pub type LeaderId = u64;
 #[deriving(TotalOrd)]
-pub type BallotNum = (uint, LeaderId);
+pub type BallotNum = (SlotNum, LeaderId);
 pub type Pvalue = (BallotNum, SlotNum, Command);
 
 // impl BallotNum {
@@ -51,7 +49,7 @@ pub enum Message<T> {
 
     Response(u64, T),
 
-    P1a(BallotNum, SlotNum), //why does this need a slotnum?
+    P1a(BallotNum),
 
     P1b(BallotNum, ~[Pvalue]),
 

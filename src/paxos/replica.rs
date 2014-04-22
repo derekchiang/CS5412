@@ -3,7 +3,6 @@
 // elements in an array, and currently we are simply iterating the arrays.
 // We should optimize the search routine. (binary search? bloom filters?)
 use std::fmt::Show;
-use std::io::net::ip::SocketAddr;
 use std::io::IoError;
 
 use serialize::{Encodable, Decodable};
@@ -54,8 +53,8 @@ impl<'a, T: StateMachine<'a, X>, X: Send + Show + Encodable<Encoder<'a>, IoError
         let bb = Busybee::new(sid, common::lookup(sid), 1, BusybeeMapper::new(common::lookup));
         Replica {
             state: StateMachine::new(),
-            slot_num: 0u,
-            lowest_unused_slot_num: 0u,
+            slot_num: 0u64,
+            lowest_unused_slot_num: 0u64,
             proposals: ~[],
             decisions: ~[],
             leaders: leaders,
