@@ -25,7 +25,7 @@ pub type Pvalue = (BallotNum, SlotNum, Command);
 //     }
 // }
 
-#[deriving(Encodable, Decodable, Show, Clone, Hash)]
+#[deriving(Encodable, Decodable, Show, Clone, Hash, TotalEq)]
 pub struct Command {
     from: u64,
     id: u64,
