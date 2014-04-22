@@ -13,7 +13,7 @@ pub type SlotNum = u64;
 pub type Proposal = (SlotNum, Command);
 pub type LeaderId = u64;
 #[deriving(TotalOrd)]
-pub type BallotNum = (SlotNum, LeaderId);
+pub type BallotNum = (u64, LeaderId);
 pub type Pvalue = (BallotNum, SlotNum, Command);
 
 // impl BallotNum {
