@@ -24,6 +24,7 @@ mod common;
 mod replica;
 mod acceptor;
 mod leader;
+mod scout;
 
 #[cfg(test)]
 mod tests {

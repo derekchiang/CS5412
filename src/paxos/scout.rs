@@ -1,7 +1,3 @@
-// extern crate msgpack;
-// extern crate serialize;
-// extern crate russenger;
-
 // use std::fmt::Show;
 // use std::io::net::ip::SocketAddr;
 
@@ -40,7 +36,7 @@
 //         }
 //     }
 
-//     pub fn run(~mut self) {
+//     pub fn run(mut ~self) {
 //         let mut waiting_for = self.acceptors.clone();
 //         let acc_clone = self.acceptors.clone();
 //         for acc in acc_clone.iter() {

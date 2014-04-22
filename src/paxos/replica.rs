@@ -26,7 +26,7 @@ pub trait StateMachine<'a, T> {
 pub struct Replica<T, X> {
     state: T,  // Would we benefit by using ~T instead?
     slot_num: SlotNum,  // specifies the slot where the next decision resides
-    next_slot_num: SlotNum,  // specifies the slot which the next proposal uses
+    lowest_unused_slot_num: SlotNum,  // specifies the slot which the next proposal uses
     proposals: ~[Proposal],
     decisions: ~[Proposal],
     leaders: ~[ServerID],
@@ -54,8 +54,8 @@ impl<'a, T: StateMachine<'a, X>, X: Send + Show + Encodable<Encoder<'a>, IoError
         let bb = Busybee::new(sid, common::lookup(sid), 1, BusybeeMapper::new(common::lookup));
         Replica {
             state: StateMachine::new(),
-            slot_num: 1u,
-            next_slot_num: 1u,
+            slot_num: 0u,
+            lowest_unused_slot_num: 0u,
             proposals: ~[],
             decisions: ~[],
             leaders: leaders,
@@ -105,8 +105,8 @@ impl<'a, T: StateMachine<'a, X>, X: Send + Show + Encodable<Encoder<'a>, IoError
             // Skip duplicated commands
             if p == comm { return; }
         }
-        let prop = (self.next_slot_num, comm);
-        self.next_slot_num += 1;  // Figure out how next_slot_num works
+        let prop = (self.lowest_unused_slot_num, comm);
+        self.lowest_unused_slot_num += 1;
         self.proposals.push(prop.clone());
         for leader in self.leaders.iter() {
             self.bb.send_object::<Message<X>>(leader.clone(), Propose(prop.clone()));
@@ -128,8 +128,8 @@ impl<'a, T: StateMachine<'a, X>, X: Send + Show + Encodable<Encoder<'a>, IoError
             self.bb.send_object(comm.from, Response(comm.id, res));
         }
 
-        if self.next_slot_num <= self.slot_num {
-            self.next_slot_num = self.slot_num + 1;
+        if self.lowest_unused_slot_num < self.slot_num {
+            self.lowest_unused_slot_num = self.slot_num;
         }
     }
 }

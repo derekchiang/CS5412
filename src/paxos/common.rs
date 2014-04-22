@@ -28,7 +28,7 @@ pub type Pvalue = (BallotNum, SlotNum, Command);
 #[deriving(Encodable, Decodable, Show, Clone, Hash)]
 pub struct Command {
     from: u64,
-    id: ~str,
+    id: u64,
     command_name: ~str,
     args: ~[~str]
 }
@@ -49,7 +49,7 @@ pub enum Message<T> {
 
     Propose(Proposal),
 
-    Response(~str, T),
+    Response(u64, T),
 
     P1a(BallotNum, SlotNum), //why does this need a slotnum?
 
