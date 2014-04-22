@@ -3,19 +3,21 @@
 // elements in an array, and currently we are simply iterating the arrays.
 // We should optimize the search routine. (binary search? bloom filters?)
 
-extern crate msgpack;
 extern crate serialize;
-extern crate russenger;
 
 use std::fmt::Show;
 use std::io::net::ip::SocketAddr;
+use std::io::IoError;
 
 use serialize::{Encodable, Decodable};
+use serialize::json::{Encoder, Decoder};
+use serialize::json;
 
-use msgpack::{Encoder, Decoder};
-
-use common::{Command, Message, SlotNum, Proposal};
+use common;
+use common::{ServerID, Command, Message, SlotNum, Proposal};
 use common::{Request, Decision, Propose, Response};
+
+use busybee::{Busybee, BusybeeMapper};
 
 pub trait StateMachine<'a, T> {
     fn new() -> Self;
@@ -30,10 +32,8 @@ pub struct Replica<T, X> {
     next_slot_num: SlotNum,  // specifies the slot which the next proposal uses
     proposals: ~[Proposal],
     decisions: ~[Proposal],
-    addr: SocketAddr,
-    leaders: ~[SocketAddr],
-    tx: Sender<(SocketAddr, Message<X>)>,
-    rx: Receiver<(SocketAddr, Message<X>)>
+    leaders: ~[ServerID],
+    bb: Busybee
 }
 
 // This macro helps to solve the problem that, when you iterate through
@@ -52,25 +52,23 @@ pub struct Replica<T, X> {
 //     mem::replace(&mut $my_lst, lst);
 // }})
 
-impl<'a, T: StateMachine<'a, X>, X: Send + Show + Encodable<Encoder<'a>> + Decodable<Decoder<'a>>> Replica<T, X> {
-    pub fn new(addr: SocketAddr, leaders: ~[SocketAddr]) -> Replica<T, X> {
-        let (tx, rx) = russenger::new::<Message<X>>(addr.clone());
+impl<'a, T: StateMachine<'a, X>, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, json::Error>> Replica<T, X> {
+    pub fn new(sid: ServerID, leaders: ~[ServerID]) -> Replica<T, X> {
+        let bb = Busybee::new(sid, common::lookup(sid), 1, BusybeeMapper::new(common::lookup));
         Replica {
             state: StateMachine::new(),
             slot_num: 1u,
             next_slot_num: 1u,
             proposals: ~[],
             decisions: ~[],
-            addr: addr,
             leaders: leaders,
-            tx: tx,
-            rx: rx
+            bb: bb
         }
     }
 
     pub fn run(mut ~self) {
         loop {
-            let (_, msg) = self.rx.recv();
+            let (_, msg): (ServerID, Message<X>) = self.bb.recv_object().unwrap();
             match msg {
                 Request(c) => { self.propose(c) }
                 
@@ -114,7 +112,7 @@ impl<'a, T: StateMachine<'a, X>, X: Send + Show + Encodable<Encoder<'a>> + Decod
         self.next_slot_num += 1;  // Figure out how next_slot_num works
         self.proposals.push(prop.clone());
         for leader in self.leaders.iter() {
-            self.tx.send((leader.clone(), Propose(prop.clone())));
+            self.bb.send_object::<Message<X>>(leader.clone(), Propose(prop.clone()));
         }
     }
 
@@ -130,7 +128,7 @@ impl<'a, T: StateMachine<'a, X>, X: Send + Show + Encodable<Encoder<'a>> + Decod
         } else {
             let res = self.state.invoke_command(comm.clone());
             self.slot_num += 1;
-            self.tx.send((from_str(comm.from).unwrap(), Response(comm.id, res)));
+            self.bb.send_object(comm.from, Response(comm.id, res));
         }
 
         if self.next_slot_num <= self.slot_num {

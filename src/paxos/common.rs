@@ -1,6 +1,15 @@
-extern crate msgpack;
-extern crate serialize;
+use std::io;
+use std::io::fs::File;
+use std::io::MemReader;
+use std::io::net::ip::SocketAddr;
+use std::path::Path;
 
+use serialize::json;
+use serialize::{Encodable, Decodable};
+
+use busybee::BusybeeMapper;
+
+pub type ServerID = u64;
 pub type SlotNum = uint;
 #[deriving(Hash)]
 pub type Proposal = (SlotNum, Command);
@@ -18,10 +27,7 @@ pub type Pvalue = (BallotNum, SlotNum, Command);
 
 #[deriving(Encodable, Decodable, Show, Clone, Hash)]
 pub struct Command {
-    // This really should be a SocketAddr, but annoyingly SocketAddr is
-    // neither encodable nor decodable, so we resort to using a str and
-    // convert it to/from SocketAddr as needed.
-    from: ~str,
+    from: u64,
     id: ~str,
     command_name: ~str,
     args: ~[~str]
@@ -57,3 +63,32 @@ pub enum Message<T> {
 
     Preempted(BallotNum), //scout or commander to leader
 }
+
+pub fn lookup(server_id: ServerID) -> SocketAddr {
+    #[deriving(Decodable)]
+    struct Server {
+        id: u64,
+        role: ~str,
+        addr: ~str,
+    }
+
+    let path = Path::new("addrs.json");
+    let mut file = File::open(&path);
+    let content = file.read_to_end().unwrap();
+    let mut content_reader = MemReader::new(content);
+    let json_object = json::from_reader(&mut content_reader as &mut io::Reader).unwrap();
+    let mut decoder = json::Decoder::new(json_object);
+    let servers: ~[Server] = match Decodable::decode(&mut decoder) {
+        Ok(v) => v,
+        Err(e) => fail!("Decoding error: {}", e)
+    };
+
+    for s in servers.move_iter() {
+        if s.id == server_id {
+            return from_str::<SocketAddr>(s.addr).unwrap();
+        }
+    }
+    fail!("Invalid server id: {}", server_id);
+}
+
+// static mapper: BusybeeMapper = BusybeeMapper::new(lookup);

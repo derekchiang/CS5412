@@ -1,17 +1,16 @@
-all: russenger paxos
+RUSTC ?= rustc
 
-russenger:
-	# cd ../russenger && make
+all: paxos
 
 paxos:
 	mkdir -p lib bin
-	rustc -O -L ../russenger/lib -L ../rust-msgpack/lib src/paxos/lib.rs --out-dir lib
+	$(RUSTC) -O -L ../rust-busybee/build --out-dir lib  src/paxos/lib.rs
 
 test:
-	rustc src/paxos/lib.rs -L lib --test -o bin/test
+	$(RUSTC) src/paxos/lib.rs -L lib --test -o bin/test
 	./bin/test
 
 clean:
 	rm -rf lib bin
 
-.PHONY: all russenger paxos test clean
+.PHONY: all paxos test clean
