@@ -8,6 +8,8 @@ use serialize::json;
 use serialize::{Encodable, Decodable};
 
 pub type ServerID = u64;
+pub type ScoutID = u64;
+pub type CommanderID = u64;
 pub type SlotNum = u64;
 #[deriving(Hash)]
 pub type Proposal = (SlotNum, Command);
@@ -28,7 +30,7 @@ pub struct Command {
     from: u64,
     id: u64,
     command_name: ~str,
-    args: ~[~str]
+    args: Vec<~str>
 }
 
 impl Eq for Command {
@@ -49,15 +51,15 @@ pub enum Message<T> {
 
     Response(u64, T),
 
-    P1a(BallotNum),
+    P1a(ScoutID, BallotNum),
 
-    P1b(BallotNum, ~[Pvalue]),
+    P1b(ScoutID, BallotNum, Vec<Pvalue>),
 
-    P2a(Pvalue),
+    P2a(CommanderID, Pvalue),
 
-    P2b(BallotNum),
+    P2b(CommanderID, BallotNum),
 
-    Adopted(BallotNum, ~[Pvalue]), //scout to leader
+    Adopted(BallotNum, Vec<Pvalue>), //scout to leader
 
     Preempted(BallotNum), //scout or commander to leader
 }

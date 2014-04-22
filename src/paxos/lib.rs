@@ -12,6 +12,7 @@
 
 #![feature(phase)]
 #![phase(syntax, link)]
+extern crate collections;
 extern crate log;
 extern crate serialize;
 extern crate uuid;
