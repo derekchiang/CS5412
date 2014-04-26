@@ -29,23 +29,23 @@ impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, j
 
     pub fn run(mut ~self) {
         loop {
-            let (leader, msg): (ServerID, Message<X>) = self.bb.recv_object().unwrap();
+            let (sender, msg): (ServerID, Message<X>) = self.bb.recv_object().unwrap();
             match msg {
-                P1a(scout_id, bnum) => {
+                P1a(bnum) => {
                     if bnum > self.ballot_num {
                         self.ballot_num = bnum;
                     }
 
-                    self.bb.send_object::<Message<X>>(leader, P1b(scout_id, self.ballot_num, self.accepted.clone()));
+                    self.bb.send_object::<Message<X>>(sender, P1b(self.ballot_num, self.accepted.clone()));
                 }
 
-                P2a(commander_id, pvalue) => {
+                P2a(pvalue) => {
                     let (b, _, _) = pvalue.clone();
                     if b >= self.ballot_num {
                         self.ballot_num = b;
                         self.accepted.push(pvalue);
                     }
-                    self.bb.send_object::<Message<X>>(leader, P2b(commander_id, self.ballot_num));
+                    self.bb.send_object::<Message<X>>(sender, P2b(self.ballot_num));
                 }
 
 //                _ => info!("Receiving a wrong message: {}", msg)

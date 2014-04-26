@@ -51,13 +51,13 @@ pub enum Message<T> {
 
     Response(u64, T),
 
-    P1a(ScoutID, BallotNum),
+    P1a(BallotNum),
 
-    P1b(ScoutID, BallotNum, Vec<Pvalue>),
+    P1b(BallotNum, Vec<Pvalue>),
 
-    P2a(CommanderID, Pvalue),
+    P2a(Pvalue),
 
-    P2b(CommanderID, BallotNum),
+    P2b(BallotNum),
 
     Adopted(BallotNum, Vec<Pvalue>), //scout to leader
 
@@ -84,7 +84,7 @@ pub fn lookup(server_id: ServerID) -> SocketAddr {
     };
 
     for s in servers.move_iter() {
-        if s.id == server_id {
+        if s.id == server_id >> 32 {
             return from_str::<SocketAddr>(s.addr).unwrap();
         }
     }

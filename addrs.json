@@ -1,29 +1,22 @@
 [{
 	"id": 1,
-	"role": "leader",
 	"addr": "localhost:9990"
 }, {
 	"id": 2,
-	"role": "replica",
 	"addr": "localhost:9991"
 }, {
 	"id": 3,
-	"role": "replica",
 	"addr": "localhost:9992"
 }, {
 	"id": 4,
-	"role": "replica",
 	"addr": "localhost:9993"
 }, {
 	"id": 5,
-	"role": "acceptor",
 	"addr": "localhost:9994"
 }, {
 	"id": 6,
-	"role": "acceptor",
 	"addr": "localhost:9995"
 }, {
 	"id": 7,
-	"role": "acceptor",
 	"addr": "localhost:9996"
 }]
