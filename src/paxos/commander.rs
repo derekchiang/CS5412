@@ -1,69 +1,69 @@
-extern crate msgpack;
-extern crate serialize;
-extern crate russenger;
-
 use std::fmt::Show;
-use std::io::net::ip::SocketAddr;
+use std::io::IoError;
+use std::iter::FromIterator;
 
+use collections::hashmap::HashSet;
+
+use serialize::json;
 use serialize::{Encodable, Decodable};
+use serialize::json::{Encoder, Decoder};
 
-use msgpack::{Encoder, Decoder};
+use busybee::{Busybee, BusybeeMapper};
 
-use common::{LeaderId, Proposal, BallotNum, SlotNum, Message, Pvalue, Decision, Propose, Adopted, Preempted};
-use common::{P1a, P1b, P2a, P2b};
+use common;
+use common::{Message, ServerID, Pvalue, Decision, Preempted};
+use common::{P2a, P2b};
 
-pub struct Commander<X> {
-	acceptors: ~[SocketAddr],
-	replicas: ~[SocketAddr],
+pub struct Commander {
+    id: ServerID,
+    leader_id: ServerID,
+	acceptors: ~[ServerID],
+	replicas: ~[ServerID],
 	pval: Pvalue,
-	tx: Sender<(SocketAddr, Message<X>)>,
-    rx: Receiver<(SocketAddr, Message<X>)>,
-    inner_tx: Sender<Message<X>>,
-    inner_rx: Receiver<Message<X>>,
+    bb: Busybee,
 }
 
-impl<'a, X: Send + Show + Encodable<Encoder<'a>> + Decodable<Decoder<'a>>> Commander<X> {
-	pub fn new(commander_id: u64, acceptors: ~[ServerID], replicas: ~[ServerID], pval: Pvalue) {
-		let (tx, rx) = russenger::new::<Message<X>>(addr.clone());
-        let (inner_tx, inner_rx) = channel();
-        Leader {
-        	acceptors: acceptors;
-        	replicas: replicas;
-        	pval: pval;
-        	tx: tx,
-        	rx: rx,
-        	inner_tx: inner_tx,
-        	inner_rx: inner_rx,
+impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, json::Error>> Commander {
+	pub fn new(commander_id: ServerID, leader_id: ServerID, acceptors: ~[ServerID],
+        replicas: ~[ServerID], pval: Pvalue) -> Commander {
+		let bb = Busybee::new(commander_id, common::lookup(commander_id), 1, BusybeeMapper::new(common::lookup));
+        Commander {
+        	id: commander_id,
+            leader_id: leader_id,
+            acceptors: acceptors,
+            replicas: replicas,
+            pval: pval,
+            bb: bb,
         }
 	}
 
 	pub fn run(mut ~self) {
-		let acc_clone = self.acceptors.clone();
-        let rep_clone = self.replicas.clone();
-        let mut waiting_for = acc_clone.clone();
-        for acc in acc_clone.iter() {
-            self.tx.send((acc.clone(), P2a(self.pval.clone())));
+        let mut waitfor: HashSet<ServerID> = FromIterator::from_iter(self.acceptors.clone().move_iter());
+        for acceptor in self.acceptors.iter() {
+            self.bb.send_object::<Message<X>>(acceptor.clone(), P2a(self.pval.clone()));
         }
+
         loop {
-            let (acc, msg) = self.rx.recv(); //somehow?
+            let (acceptor, msg): (ServerID, Message<X>) = self.bb.recv_object().unwrap();
             match msg {
-                P2b((b_num, l_id)) => {
-                    let ((bal, _), slt, ref comm) = pval; //make sure this doesnt cause problems with the ownerships
-                    if b_num == bal {
-                        waiting_for.remove(acc);
-                        if waiting_for.iter().len() < acc_clone.iter().len() / 2 { //fix
-                            for rep in rep_clone.iter() {
-                                self.tx.send((rep.clone(), Decision((slt, comm.clone()))));
+                P2b(ballot_num) => {
+                    let (bnum, slot_num, ref comm) = self.pval;
+                    if bnum == ballot_num {
+                        waitfor.remove(&acceptor);
+                        if waitfor.len() < self.acceptors.len() / 2 {
+                            for replica in self.replicas.iter() {
+                                self.bb.send_object::<Message<X>>(replica.clone(), Decision((slot_num, comm.clone())));
                             }
-                            break;
+                            return;
                         }
                     } else {
-                        self.inner_tx.send(Preempted((b_num, l_id))); //tell leader that this one has been preempted
-                        break;
+                        self.bb.send_object::<Message<X>>(self.leader_id, Preempted(ballot_num));
+                        return;
                     }
                 }
 
                 _ => {} //need some debug statement here
             }
+        }
 	}
 }
