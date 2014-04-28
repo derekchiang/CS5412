@@ -34,7 +34,7 @@ impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, j
         }
     }
 
-    pub fn run(~self) {
+    pub fn run(mut self) {
         for acc in self.acceptors.iter() {
             self.bb.send_object::<Message<X>>(acc.clone(), P1a(self.id, self.ballot_num));
         }

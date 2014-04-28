@@ -62,7 +62,7 @@ impl<'a, T: StateMachine<'a, X>, X: Send + Show + Encodable<Encoder<'a>, IoError
         }
     }
 
-    pub fn run(mut ~self) {
+    pub fn run(mut self) {
         loop {
             let (_, msg): (ServerID, Message<X>) = self.bb.recv_object().unwrap();
             match msg {

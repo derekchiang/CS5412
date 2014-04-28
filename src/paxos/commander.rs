@@ -37,7 +37,7 @@ impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, j
         }
 	}
 
-	pub fn run(mut ~self) {
+	pub fn run(mut self) {
         let mut waitfor: HashSet<ServerID> = FromIterator::from_iter(self.acceptors.clone().move_iter());
         for acceptor in self.acceptors.iter() {
             self.bb.send_object::<Message<X>>(acceptor.clone(), P2a(self.id, self.pval.clone()));

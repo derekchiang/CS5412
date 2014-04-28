@@ -27,7 +27,7 @@ impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, j
         }
     }
 
-    pub fn run(mut ~self) {
+    pub fn run(mut self) {
         loop {
             let (sender, msg): (ServerID, Message<X>) = self.bb.recv_object().unwrap();
             match msg {
