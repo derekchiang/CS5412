@@ -13,9 +13,8 @@ pub type CommanderID = u64;
 pub type SlotNum = u64;
 #[deriving(Hash)]
 pub type Proposal = (SlotNum, Command);
-pub type LeaderId = u64;
 #[deriving(TotalOrd)]
-pub type BallotNum = (u64, LeaderId);
+pub type BallotNum = (u64, ServerID);
 pub type Pvalue = (BallotNum, SlotNum, Command);
 
 // impl BallotNum {
@@ -51,13 +50,13 @@ pub enum Message<T> {
 
     Response(u64, T),
 
-    P1a(BallotNum),
+    P1a(ServerID, BallotNum),
 
-    P1b(BallotNum, Vec<Pvalue>),
+    P1b(ServerID, BallotNum, Vec<Pvalue>),
 
-    P2a(Pvalue),
+    P2a(ServerID, Pvalue),
 
-    P2b(BallotNum),
+    P2b(ServerID, BallotNum),
 
     Adopted(BallotNum, Vec<Pvalue>), //scout to leader
 
@@ -84,7 +83,7 @@ pub fn lookup(server_id: ServerID) -> SocketAddr {
     };
 
     for s in servers.move_iter() {
-        if s.id == server_id >> 32 {
+        if s.id == server_id {
             return from_str::<SocketAddr>(s.addr).unwrap();
         }
     }
