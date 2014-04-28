@@ -101,23 +101,17 @@ impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, j
                         self.spawn_commander((bnum, s, p));
                     }
 
-                    // let max_pvalues = self.pmax(pvalues);
-                    // self.proposals = self.p_update(&self.proposals, max_pvalues);
-                    // let prop_clone = self.proposals.clone();
-                    // for (s, p) in prop_clone.move_iter() {
-                    //     self.spawn_commander((self.ballot_num, s, p));
-                    // }
-                    // self.active = true;
+                    self.active = true;
                 }
 
-                // Preempted((b_num, _)) => {
-                //     let (curr_num, _) = self.ballot_num;
-                //     if b_num > curr_num {
-                //         self.active = false;
-                //         self.ballot_num = (b_num + 1, self.id);
-                //         self.spawn_scout(self.ballot_num);
-                //     }
-                // }
+                Preempted(bnum) => {
+                    if bnum > self.ballot_num {
+                        self.active = false;
+                        let (n, _) = bnum;
+                        self.ballot_num = (n + 1, self.id);
+                        self.spawn_scout();
+                    }
+                }
 
                 _ => {} //need some debug statement here 
             }
