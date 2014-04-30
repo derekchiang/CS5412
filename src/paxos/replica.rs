@@ -15,7 +15,7 @@ use common::{Request, Decision, Propose, Response};
 
 use busybee::{Busybee, BusybeeMapper};
 
-pub trait StateMachine<'a, T> {
+pub trait StateMachine<T> {
     fn new() -> Self;
     fn destroy(self);
     fn clone(&self) -> Self;
@@ -48,9 +48,9 @@ pub struct Replica<T, X> {
 //     mem::replace(&mut $my_lst, lst);
 // }})
 
-impl<'a, T: StateMachine<'a, X>, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, json::Error>> Replica<T, X> {
+impl<'a, T: StateMachine<X>, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, json::Error>> Replica<T, X> {
     pub fn new(sid: ServerID, leaders: ~[ServerID]) -> Replica<T, X> {
-        let bb = Busybee::new(sid, common::lookup(sid), 1, BusybeeMapper::new(common::lookup));
+        let bb = Busybee::new(sid, common::lookup(sid), 0, BusybeeMapper::new(common::lookup));
         Replica {
             state: StateMachine::new(),
             slot_num: 0u64,

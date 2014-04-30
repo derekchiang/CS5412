@@ -19,7 +19,7 @@ pub struct Acceptor {
 
 impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, json::Error>> Acceptor {
     pub fn new(sid: ServerID) -> Acceptor {
-        let bb = Busybee::new(sid, common::lookup(sid), 1, BusybeeMapper::new(common::lookup));
+        let bb = Busybee::new(sid, common::lookup(sid), 0, BusybeeMapper::new(common::lookup));
         Acceptor {
             ballot_num: (0u64, 0u64),
             accepted: vec!(),

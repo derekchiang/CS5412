@@ -8,8 +8,7 @@ use serialize::json;
 use serialize::{Encodable, Decodable};
 
 pub type ServerID = u64;
-pub type ScoutID = u64;
-pub type CommanderID = u64;
+pub type CommandID = u64;
 pub type SlotNum = u64;
 #[deriving(Hash)]
 pub type Proposal = (SlotNum, Command);
@@ -26,9 +25,9 @@ pub type Pvalue = (BallotNum, SlotNum, Command);
 
 #[deriving(Encodable, Decodable, Show, Clone, Hash, TotalEq)]
 pub struct Command {
-    from: u64,
-    id: u64,
-    command_name: ~str,
+    from: ServerID,
+    id: CommandID,
+    name: ~str,
     args: Vec<~str>
 }
 
@@ -67,7 +66,6 @@ pub fn lookup(server_id: ServerID) -> SocketAddr {
     #[deriving(Decodable)]
     struct Server {
         id: u64,
-        role: ~str,
         addr: ~str,
     }
 

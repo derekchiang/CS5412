@@ -31,7 +31,7 @@ pub struct Leader<X> {
 
 impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, json::Error>> Leader<X> {
     pub fn new(sid: ServerID, acceptors: ~[ServerID], replicas: ~[ServerID]) -> Leader<X> {
-        let bb = Busybee::new(sid, common::lookup(sid), 4, BusybeeMapper::new(common::lookup));
+        let bb = Busybee::new(sid, common::lookup(sid), 0, BusybeeMapper::new(common::lookup));
         Leader {
             id: sid,
             next_sub_id: 0u64,  // ids for scouts and commanders

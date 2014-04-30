@@ -27,11 +27,10 @@ mod acceptor;
 mod leader;
 mod scout;
 mod commander;
+mod test;
 
 #[cfg(test)]
 mod tests {
-    extern crate russenger;
-
     #[test]
     fn do_something() {
         println!("Hello World!");
