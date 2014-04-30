@@ -32,7 +32,7 @@ mod test;
 #[cfg(test)]
 mod tests {
     #[test]
-    fn do_something() {
+    fn do_something() {;
         println!("Hello World!");
     }
 }

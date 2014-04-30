@@ -65,8 +65,13 @@ impl<'a, T: StateMachine<X>, X: Send + Show + Encodable<Encoder<'a>, IoError> + 
     pub fn run(mut self) {
         loop {
             let (_, msg): (ServerID, Message<X>) = self.bb.recv_object().unwrap();
+            // TODO: we should verify that:
+            // 1. If the message is a Request, then the sender ID matches the id field of the Request.
+            // 2. If the message is a Decision, then the sender should indeed be a leader.
             match msg {
-                Request(c) => { self.propose(c) }
+                Request(c) => {
+                    self.propose(c);
+                }
                 
                 Decision((snum, comm)) => {
                     self.decisions.push((snum, comm));

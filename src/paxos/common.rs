@@ -10,7 +10,7 @@ use serialize::{Encodable, Decodable};
 pub type ServerID = u64;
 pub type CommandID = u64;
 pub type SlotNum = u64;
-#[deriving(Hash)]
+#[deriving(Hash, Show)]
 pub type Proposal = (SlotNum, Command);
 #[deriving(TotalOrd)]
 pub type BallotNum = (u64, ServerID);
@@ -81,7 +81,7 @@ pub fn lookup(server_id: ServerID) -> SocketAddr {
     };
 
     for s in servers.move_iter() {
-        if s.id == server_id {
+        if s.id == server_id >> 32 {
             return from_str::<SocketAddr>(s.addr).unwrap();
         }
     }

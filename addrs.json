@@ -1,22 +1,22 @@
 [{
 	"id": 1,
-	"addr": "localhost:9990"
+	"addr": "127.0.0.1:9990"
 }, {
 	"id": 2,
-	"addr": "localhost:9991"
+	"addr": "127.0.0.1:9991"
 }, {
 	"id": 3,
-	"addr": "localhost:9992"
+	"addr": "127.0.0.1:9992"
 }, {
 	"id": 4,
-	"addr": "localhost:9993"
+	"addr": "127.0.0.1:9993"
 }, {
 	"id": 5,
-	"addr": "localhost:9994"
+	"addr": "127.0.0.1:9994"
 }, {
 	"id": 6,
-	"addr": "localhost:9995"
+	"addr": "127.0.0.1:9995"
 }, {
 	"id": 7,
-	"addr": "localhost:9996"
+	"addr": "127.0.0.1:9996"
 }]
