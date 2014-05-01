@@ -9,7 +9,8 @@ use serialize::json;
 use collections::hashmap::{HashSet, HashMap};
 
 use common;
-use common::{ServerID, SlotNum, BallotNum, Command, Pvalue, Proposal, Message, Propose, Adopted, Preempted};
+use common::{ServerID, SlotNum, BallotNum, Command, Pvalue};
+use common::{Proposal, Message, Propose, Adopted, Preempted, P1b, P2b};
 
 use busybee::{Busybee, BusybeeMapper};
 
@@ -48,7 +49,7 @@ impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, j
     pub fn run(mut self) {
         self.spawn_scout();
         loop {
-            let (_, msg): (ServerID, Message<X>) = self.bb.recv_object().unwrap();
+            let (from, msg): (ServerID, Message<X>) = self.bb.recv_object().unwrap();
             match msg {
                 Propose(proposal) => {
                     if !self.proposals.contains(&proposal) {
@@ -113,9 +114,20 @@ impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, j
                     }
                 }
 
+                // Forward to scouts
+                P1b(scout_id, bnum, pvalues) => {
+                    let ch = self.chans.find_copy(&scout_id).unwrap();
+                    ch.send((from, P1b(scout_id, bnum, pvalues)));
+                }
+
+                // Forward to commanders
+                P2b(commander_id, bnum) => {
+                    let ch = self.chans.find_copy(&commander_id).unwrap();
+                    ch.send((from, P2b(commander_id, bnum)));
+                }
+
                 _ => {} //need some debug statement here 
             }
-            
         }
     }
 
