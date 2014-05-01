@@ -16,16 +16,16 @@ use common::{P2a, P2b};
 pub struct Commander<X> {
     id: ServerID,
     leader_id: ServerID,
-	acceptors: ~[ServerID],
-	replicas: ~[ServerID],
+	acceptors: Vec<ServerID>,
+	replicas: Vec<ServerID>,
 	pval: Pvalue,
     bb: Busybee,
     rx: Receiver<(ServerID, Message<X>)>,
 }
 
 impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, json::Error>> Commander<X> {
-	pub fn new(commander_id: ServerID, leader_id: ServerID, acceptors: ~[ServerID],
-        replicas: ~[ServerID], pval: Pvalue, bb: Busybee, rx: Receiver<(ServerID, Message<X>)>) -> Commander<X> {
+	pub fn new(commander_id: ServerID, leader_id: ServerID, acceptors: Vec<ServerID>,
+        replicas: Vec<ServerID>, pval: Pvalue, bb: Busybee, rx: Receiver<(ServerID, Message<X>)>) -> Commander<X> {
         Commander {
         	id: commander_id,
             leader_id: leader_id,

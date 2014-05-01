@@ -26,37 +26,21 @@ pub struct Replica<T, X> {
     state: T,  // Would we benefit by using ~T instead?
     slot_num: SlotNum,  // specifies the slot where the next decision resides
     lowest_unused_slot_num: SlotNum,  // specifies the slot which the next proposal uses
-    proposals: ~[Proposal],
-    decisions: ~[Proposal],
-    leaders: ~[ServerID],
+    proposals: Vec<Proposal>,
+    decisions: Vec<Proposal>,
+    leaders: Vec<ServerID>,
     bb: Busybee
 }
 
-// This macro helps to solve the problem that, when you iterate through
-// a list within a struct, you are borrowing that struct, as a result of
-// which you can't call mutable function on that struct inside the loop.
-// Thus, this macro swaps out the list for the loop and swaps it in at
-// the end.
-// 
-// TODO: doesn't seem like we need it anymore?
-// 
-// macro_rules! mem_iter(($obj:ident, $my_lst:expr, $ops:expr) => {{
-//     let lst = mem::replace(&mut $my_lst, ~[]);
-//     for $obj in lst.iter() {
-//         $ops;
-//     }
-//     mem::replace(&mut $my_lst, lst);
-// }})
-
 impl<'a, T: StateMachine<X>, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, json::Error>> Replica<T, X> {
-    pub fn new(sid: ServerID, leaders: ~[ServerID]) -> Replica<T, X> {
+    pub fn new(sid: ServerID, leaders: Vec<ServerID>) -> Replica<T, X> {
         let bb = Busybee::new(sid, common::lookup(sid), 0, BusybeeMapper::new(common::lookup));
         Replica {
             state: StateMachine::new(),
             slot_num: 0u64,
             lowest_unused_slot_num: 0u64,
-            proposals: ~[],
-            decisions: ~[],
+            proposals: vec!(),
+            decisions: vec!(),
             leaders: leaders,
             bb: bb
         }

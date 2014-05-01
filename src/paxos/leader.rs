@@ -23,15 +23,15 @@ pub struct Leader<X> {
     ballot_num: BallotNum,
     active: bool,
     proposals: HashSet<Proposal>,
-    acceptors: ~[ServerID],
-    replicas: ~[ServerID],
+    acceptors: Vec<ServerID>,
+    replicas: Vec<ServerID>,
     bb: Busybee,
     // Channels for messages to scouts and commanders
     chans: HashMap<ServerID, Sender<(ServerID, Message<X>)>>
 }
 
 impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, json::Error>> Leader<X> {
-    pub fn new(sid: ServerID, acceptors: ~[ServerID], replicas: ~[ServerID]) -> Leader<X> {
+    pub fn new(sid: ServerID, acceptors: Vec<ServerID>, replicas: Vec<ServerID>) -> Leader<X> {
         let bb = Busybee::new(sid, common::lookup(sid), 0, BusybeeMapper::new(common::lookup));
         Leader {
             id: sid,

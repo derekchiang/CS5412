@@ -17,13 +17,13 @@ pub struct Scout<X> {
     id: ServerID,
     leader_id: ServerID,
     ballot_num: BallotNum,
-    acceptors: ~[ServerID],
+    acceptors: Vec<ServerID>,
     bb: Busybee,
     rx: Receiver<(ServerID, Message<X>)>,
 }
 
 impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, json::Error>> Scout<X> {
-    pub fn new(scout_id: ServerID, leader_id: ServerID, acceptors: ~[ServerID], bnum: BallotNum, bb: Busybee, rx: Receiver<(ServerID, Message<X>)>) -> Scout<X> {
+    pub fn new(scout_id: ServerID, leader_id: ServerID, acceptors: Vec<ServerID>, bnum: BallotNum, bb: Busybee, rx: Receiver<(ServerID, Message<X>)>) -> Scout<X> {
         Scout {
             id: scout_id,
             leader_id: leader_id,
