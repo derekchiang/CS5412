@@ -64,7 +64,6 @@ impl<'a, T: StateMachine<X>, X: Send + Show + Encodable<Encoder<'a>, IoError> + 
 
     pub fn run(mut self) {
         loop {
-            println!("waiting for msg");
             let (_, msg): (ServerID, Message<X>) = self.bb.recv_object().unwrap();
             // TODO: we should verify that:
             // 1. If the message is a Request, then the sender ID matches the id field of the Request.
@@ -137,7 +136,6 @@ impl<'a, T: StateMachine<X>, X: Send + Show + Encodable<Encoder<'a>, IoError> + 
         if found {
             self.slot_num += 1;
         } else {
-            println!("performing");
             let res = self.state.invoke_command(comm.clone());
             self.slot_num += 1;
             self.bb.send_object(comm.from, Response(comm.id, res));

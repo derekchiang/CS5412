@@ -2,7 +2,7 @@ use common;
 use common::{Message, Command, Request, Response, Propose, Proposal, Decision, ServerID};
 use replica::{Replica, StateMachine};
 
-use busybee::{Busybee, BusybeeMapper};
+use busybee::{Busybee, BusybeeMapper, TIMEOUT};
 
 struct STM {
     counter: uint
@@ -96,10 +96,8 @@ fn test_replica() {
 
     bb.send_object::<Msg>(rid, msg);
 
-    stdout.write_line("BP1");
     let (sid, msg): (ServerID, Msg) = bb.recv_object().unwrap();
     assert_eq!(sid, rid);
-    stdout.write_line("BP2");
     match msg {
         Response(comm_id, res) => {
             // Since this is the first request the replica received,
@@ -110,4 +108,18 @@ fn test_replica() {
 
         _ => fail!("wrong message: {}", msg)
     }
+
+    // Test case 3:
+    // Since a decision has already been made for the 0th slot, another
+    // decision should have no effect on the replica.
+    let msg = Decision((0, cmd.clone()));
+
+    bb.send_object::<Msg>(rid, msg);
+    bb.set_timeout(1000);
+
+    match bb.recv_object::<Msg>() {
+        Err(TIMEOUT) => { /* The only valid response */ },
+        x => fail!("{}", x),
+    }
+    bb.set_timeout(0);
 }
