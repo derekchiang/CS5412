@@ -100,8 +100,6 @@ fn test_replica() {
     assert_eq!(sid, rid);
     match msg {
         Response(comm_id, res) => {
-            // Since this is the first request the replica received,
-            // the slot number should be 0.
             assert_eq!(comm_id, cmd.id);
             assert_eq!(res, ~"ok");
         },
@@ -121,5 +119,43 @@ fn test_replica() {
         Err(TIMEOUT) => { /* The only valid response */ },
         x => fail!("{}", x),
     }
-    bb.set_timeout(0);
+    bb.set_timeout(-1);
+
+    // Test case 4:
+    // Now, let's make sure the counter was incremented successfully.
+    let cmd = Command{
+        from: id,
+        id: 2,
+        name: ~"read",
+        args: vec!()
+    };
+    let msg = Request(cmd.clone());
+
+    bb.send_object::<Msg>(rid, msg);
+
+    let (sid, msg): (ServerID, Msg) = bb.recv_object().unwrap();
+    assert_eq!(sid, rid);
+    match msg {
+        Propose((slot_num, comm)) => {
+            assert_eq!(slot_num, 1);
+            assert_eq!(comm, cmd);
+        },
+
+        _ => fail!("wrong message: {}", msg)
+    }
+
+    let msg = Decision((1, cmd.clone()));
+
+    bb.send_object::<Msg>(rid, msg);
+
+    let (sid, msg): (ServerID, Msg) = bb.recv_object().unwrap();
+    assert_eq!(sid, rid);
+    match msg {
+        Response(comm_id, res) => {
+            assert_eq!(comm_id, cmd.id);
+            assert_eq!(res, ~"3");
+        },
+
+        _ => fail!("wrong message: {}", msg)
+    }
 }
