@@ -64,6 +64,7 @@ impl<'a, T: StateMachine<X>, X: Send + Show + Encodable<Encoder<'a>, IoError> + 
 
     pub fn run(mut self) {
         loop {
+            println!("waiting for msg");
             let (_, msg): (ServerID, Message<X>) = self.bb.recv_object().unwrap();
             // TODO: we should verify that:
             // 1. If the message is a Request, then the sender ID matches the id field of the Request.
@@ -75,10 +76,10 @@ impl<'a, T: StateMachine<X>, X: Send + Show + Encodable<Encoder<'a>, IoError> + 
                 
                 Decision((snum, comm)) => {
                     self.decisions.push((snum, comm));
-                    let mut performed = false;
                     loop {
-                        let mut to_perform = ~[];
-                        let mut to_propose = ~[];
+                        let mut performed = false;
+                        let mut to_perform: Vec<Command> = vec!();
+                        let mut to_propose: Vec<Command> = vec!();
                         for dec in self.decisions.iter() {
                             let (s1, p1) = dec.clone();
                             if s1 == self.slot_num {
@@ -92,8 +93,15 @@ impl<'a, T: StateMachine<X>, X: Send + Show + Encodable<Encoder<'a>, IoError> + 
                                 performed = true
                             }
                         }
-                        to_propose.move_iter().map(|comm| self.propose(comm) );
-                        to_perform.move_iter().map(|comm| self.perform(comm) );
+
+                        for comm in to_propose.move_iter() {
+                            self.propose(comm);
+                        }
+
+                        for comm in to_perform.move_iter() {
+                            self.perform(comm);
+                        }
+
                         if performed == false { break; }
                     }
                 }
@@ -120,13 +128,16 @@ impl<'a, T: StateMachine<X>, X: Send + Show + Encodable<Encoder<'a>, IoError> + 
     fn perform(&mut self, comm: Command) {
         let mut found = false;
         for dec in self.decisions.iter() {
-            let (_, c) = dec.clone(); 
-            if c == comm { found = true; }
+            let (slot_num, c) = dec.clone();
+            if (slot_num < self.slot_num && c == comm) {
+                found = true;
+            }
         }
 
         if found {
             self.slot_num += 1;
         } else {
+            println!("performing");
             let res = self.state.invoke_command(comm.clone());
             self.slot_num += 1;
             self.bb.send_object(comm.from, Response(comm.id, res));

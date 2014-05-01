@@ -105,7 +105,7 @@ fn test_replica() {
             // Since this is the first request the replica received,
             // the slot number should be 0.
             assert_eq!(comm_id, cmd.id);
-            assert_eq!(res, ~"3");
+            assert_eq!(res, ~"ok");
         },
 
         _ => fail!("wrong message: {}", msg)
