@@ -11,14 +11,14 @@ use common::{P1a, P1b, P2a, P2b};
 
 use busybee::{Busybee, BusybeeMapper};
 
-pub struct Acceptor {
+pub struct Acceptor<X> {
     ballot_num: BallotNum,
     accepted: Vec<Pvalue>,
     bb: Busybee,
 }
 
-impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, json::Error>> Acceptor {
-    pub fn new(sid: ServerID) -> Acceptor {
+impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, json::Error>> Acceptor<X> {
+    pub fn new(sid: ServerID) -> Acceptor<X> {
         let bb = Busybee::new(sid, common::lookup(sid), 0, BusybeeMapper::new(common::lookup));
         Acceptor {
             ballot_num: (0u64, 0u64),
