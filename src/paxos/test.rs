@@ -11,6 +11,9 @@ use acceptor::Acceptor;
 use scout::Scout;
 use commander::Commander;
 
+use acceptor::{Acceptor};
+use common::{P1a, P1b, P2a, P2b, BallotNum, Message};
+
 use busybee::{Busybee, BusybeeMapper, TIMEOUT};
 
 type Msg = Message<~str>;
@@ -66,10 +69,130 @@ fn expect_no_msg(mut bb: Busybee) {
 }
 
 #[test]
-fn test_replica() {
+fn test_acceptor() {
     use std::io::stdio::stdout;
     let mut stdout = stdout();
 
+    let aid = 1u64 << 32;
+    let id = 2u64 << 32;
+    let acc = Acceptor::<~str>::new(aid);
+
+    spawn(proc() {
+        acc.run();
+    });
+
+    let mut bb = Busybee::new(id, common::lookup(id), 0, BusybeeMapper::new(common::lookup));
+    //Test Case 1:
+    //send p1a message to acceptor, check for correct p2b reply
+    //the accepted set should be empty, ballotnum should be 0
+
+
+    //sending P1a message with id = tester's id and ballotnum = 1, this server's id (?)
+    //TODO: decide what that second id needs to be
+    let msg = P1a(id, (1, id));
+    bb.send_object::<Msg>(aid, msg);
+
+    let (sid, msg): (ServerID, Msg) = bb.recv_object().unwrap();
+    //make sure you got a reply from the place you sent to
+    assert_eq!(sid, aid);
+
+    match msg {
+        P1b(sid, (b_num, sid2), accepted) => {
+            //this is the 'leader' that sent the P1a
+            assert_eq!(sid, id);
+            //should have the same ballot number as the one you sent
+            assert_eq!(b_num, 1);
+            //should have your id as the id of the server that sent that ballot
+            assert_eq!(sid2, id);
+            //should not have accepted anything yet
+            assert_eq!(accepted, vec!());
+        }
+        _ => fail!("wrong message: {}", msg)
+    }
+
+    //Test Case 2:
+    //send p1a message with lower ballot number to acceptor. hopefully it returns the higher one
+    //pretend it was sent from mysterious server 3
+    let msg = P1a(id, (0, 3u64 << 32));
+    bb.send_object::<Msg>(aid, msg);
+
+    let (sid, msg): (ServerID, Msg) = bb.recv_object().unwrap();
+    //make sure you got a reply from the place you sent to
+    assert_eq!(sid, aid);
+
+    match msg {
+        P1b(sid, (b_num, sid2), accepted) => {
+            //this is the 'leader' that sent the P1a
+            assert_eq!(sid, id);
+            //should have the higher ballot number rather than the one you sent
+            assert_eq!(b_num, 1);
+            //should have your id as the id of the server that sent that ballot (not the mysterious server 3)
+            assert_eq!(sid2, id);
+            //should not have accepted anything yet
+            assert_eq!(accepted, vec!());
+        }
+        _ => fail!("wrong message: {}", msg)
+    }
+
+    //Test Case 3:
+    //send p2a message (acceptor should accept it and send the proper response)
+    //then send another p1a message (acceptor should adopt it and send back accepted list containing previous pvalue)
+    let cmd =  Command{
+        from: id,
+        id: 1,
+        name: ~"echo",
+        args: vec!(~"hello world")
+    };
+    //ballotnum = 2, slotnum = 0 (?)
+    let msg = P2a(id, ((2, id), 0, cmd.clone()));
+    bb.send_object::<Msg>(aid, msg);
+
+    let (sid, msg): (ServerID, Msg) = bb.recv_object().unwrap();
+    //make sure you got a reply from the place you sent to
+    assert_eq!(sid, aid);
+
+    match msg {
+        P2b(sid, (b_num, sid2)) => {
+            //leader that sent the P2a is me
+            assert_eq!(sid, id);
+            //the highest ballot num so far is 2
+            assert_eq!(b_num, 2);
+            //the leader that sent that ballot num is me
+            assert_eq!(sid2, id);
+        }
+        _ => fail!("wrong message: {}", msg)
+    }
+    //send another P1a message to see if the command was accepted
+    let msg = P1a(id, (0, id));
+    bb.send_object::<Msg>(aid, msg);
+
+    let (sid, msg): (ServerID, Msg) = bb.recv_object().unwrap();
+    //make sure you got a reply from the place you sent to
+    assert_eq!(sid, aid);
+
+    match msg {
+        P1b(sid, (b_num, sid2), accepted) => {
+            //this is the 'leader' that sent the P1a
+            assert_eq!(sid, id);
+            //should have the higher ballot number rather than the one you sent
+            assert_eq!(b_num, 2);
+            //should have your id as the id of the server that sent that ballot (not the mysterious server 3)
+            assert_eq!(sid2, id);
+            //should have the previous command accepted
+            assert_eq!(accepted, vec!(((2, id), 0, cmd.clone())));
+        }
+        _ => fail!("wrong message: {}", msg)
+    }
+
+}
+
+//stdout.write_line('hello')
+#[test]
+fn test_replica() {
+    use std::io::stdio::stdout;
+    let mut stdout = stdout();
+    type Msg = Message<~str>;
+    //shift id left 32
     let rid = 1u64 << 32;
     let id = 2u64 << 32;
 
