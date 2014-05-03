@@ -1,3 +1,5 @@
+#[phase(syntax, link)] extern crate log;
+
 use std::fmt::Show;
 use std::io::IoError;
 use std::iter::FromIterator;
@@ -45,12 +47,13 @@ impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, j
 
         loop {
             let (acceptor_id, msg) = self.rx.recv();
+            info!("commander {}: recv {} from {}", self.id, msg, acceptor_id);
             match msg {
                 P2b(_, ballot_num) => {
                     let (bnum, slot_num, ref comm) = self.pval;
                     if bnum == ballot_num {
                         waitfor.remove(&acceptor_id);
-                        if waitfor.len() < self.acceptors.len() / 2 {
+                        if waitfor.len() < (self.acceptors.len() + 1) / 2 {
                             for replica in self.replicas.iter() {
                                 self.bb.send_object::<Message<X>>(replica.clone(), Decision((slot_num, comm.clone())));
                             }

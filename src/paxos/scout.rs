@@ -1,3 +1,5 @@
+#[phase(syntax, link)] extern crate log;
+
 use std::fmt::Show;
 use std::io::IoError;
 use std::iter::FromIterator;
@@ -42,6 +44,7 @@ impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, j
         let mut pvalues: HashSet<Pvalue> = HashSet::new();
         loop {
             let (acceptor_id, msg) = self.rx.recv();
+            info!("scout {}: recv {} from {}", self.id, msg, acceptor_id);
             match msg {
                 P1b(_, bnum, accepted_pvals) => {
                     if bnum == self.ballot_num {
@@ -49,13 +52,15 @@ impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, j
                             pvalues.insert(pval);
                         }
                         waitfor.remove(&acceptor_id);
-                        if waitfor.len() < (self.acceptors.len() / 2) {
+                        if waitfor.len() < (self.acceptors.len() + 1) / 2 {
                             let pvalues_vec = FromIterator::from_iter(pvalues.move_iter());
                             self.bb.send_object::<Message<X>>(self.leader_id, Adopted(bnum, pvalues_vec));
+                            info!("adopting");
                             return;
                         }
                     } else {
                         self.bb.send_object::<Message<X>>(self.leader_id, Preempted(bnum));
+                        info!("preempting");
                         return;
                     }
 

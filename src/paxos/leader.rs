@@ -1,3 +1,5 @@
+#[phase(syntax, link)] extern crate log;
+
 use std::fmt::Show;
 use std::io::IoError;
 use std::mem;
@@ -50,6 +52,7 @@ impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, j
         self.spawn_scout();
         loop {
             let (from, msg): (ServerID, Message<X>) = self.bb.recv_object().unwrap();
+            info!("leader {}: recv {} from {}", self.id, msg, from);
             match msg {
                 Propose(proposal) => {
                     if !self.proposals.contains(&proposal) {
@@ -135,7 +138,8 @@ impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, j
         let (tx, rx) = channel();
         let scout = Scout::new(self.next_sub_id, self.id, self.acceptors.clone(),
             self.ballot_num, self.bb, rx);
-        self.chans.insert(self.next_sub_id, tx);
+        info!("leader {}: spawning a scout with id {}", self.id, scout.id);
+        self.chans.insert(scout.id, tx);
         self.next_sub_id += 1;
         spawn(proc() {
             scout.run();
@@ -146,7 +150,8 @@ impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, j
         let (tx, rx) = channel();
         let commander = Commander::new(self.next_sub_id, self.id, self.acceptors.clone(),
             self.replicas.clone(), pval, self.bb, rx);
-        self.chans.insert(self.next_sub_id, tx);
+        info!("leader {}: spawning a commander with id {}", self.id, commander.id);
+        self.chans.insert(commander.id, tx);
         self.next_sub_id += 1;
         spawn(proc() {
             commander.run();

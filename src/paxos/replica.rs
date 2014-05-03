@@ -112,7 +112,7 @@ impl<'a, T: StateMachine<X>, X: Send + Show + Encodable<Encoder<'a>, IoError> + 
         let mut found = false;
         for dec in self.decisions.iter() {
             let (slot_num, c) = dec.clone();
-            if (slot_num < self.slot_num && c == comm) {
+            if slot_num < self.slot_num && c == comm {
                 found = true;
             }
         }
