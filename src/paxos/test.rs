@@ -3,9 +3,9 @@
 #![allow(unused_mut)]
 
 use common;
-use common::{Message, Command, Request, Response, Propose, Proposal, Decision, ServerID};
+use common::{StateMachine, Message, Command, Request, Response, Propose, Proposal, Decision, ServerID};
 use common::{P1a, P1b, P2a, P2b};
-use replica::{Replica, StateMachine};
+use replica::{Replica};
 use leader::Leader;
 use acceptor::Acceptor;
 use scout::Scout;
@@ -186,7 +186,6 @@ fn test_acceptor() {
 
 }
 
-//stdout.write_line('hello')
 #[test]
 fn test_replica() {
     use std::io::stdio::stdout;

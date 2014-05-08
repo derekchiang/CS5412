@@ -2,10 +2,23 @@ use std::io;
 use std::io::fs::File;
 use std::io::MemReader;
 use std::io::net::ip::SocketAddr;
+use std::io::IoError;
+use std::fmt::Show;
 use std::path::Path;
 
 use serialize::json;
 use serialize::{Encodable, Decodable};
+use serialize::json::{Encoder, Decoder};
+
+pub trait DataConstraint<'a>: Share + Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, json::Error> {}
+impl<'a, T: Share + Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, json::Error>> DataConstraint<'a> for T {}
+
+pub trait StateMachine<T> {
+    fn new() -> Self;
+    fn destroy(self);
+    fn clone(&self) -> Self;
+    fn invoke_command(&mut self, command: Command) -> T;
+}
 
 pub type ServerID = u64;
 pub type CommandID = u64;
@@ -15,13 +28,6 @@ pub type Proposal = (SlotNum, Command);
 #[deriving(TotalOrd)]
 pub type BallotNum = (u64, ServerID);
 pub type Pvalue = (BallotNum, SlotNum, Command);
-
-// impl BallotNum {
-//     pub fn increment(self) -> BallotNum {
-//         let (n, lid) = self;
-//         (n+1, lid)
-//     }
-// }
 
 #[deriving(Encodable, Decodable, Show, Clone, Hash, TotalEq)]
 pub struct Command {

@@ -1,28 +1,13 @@
-// Some random notes:
-// 1. There seems to be a lot of code that tests for the existence of certain
-// elements in an array, and currently we are simply iterating the arrays.
-// We should optimize the search routine. (binary search? bloom filters?)
-use std::fmt::Show;
-use std::io::IoError;
-
-use serialize::{Encodable, Decodable};
-use serialize::json::{Encoder, Decoder};
-use serialize::json;
+#[phase(syntax, link)] extern crate log;
 
 use common;
-use common::{ServerID, Command, Message, SlotNum, Proposal};
+use common::{DataConstraint, StateMachine, ServerID, Command, Message, SlotNum, Proposal};
 use common::{Request, Decision, Propose, Response};
 
 use busybee::{Busybee, BusybeeMapper};
 
-pub trait StateMachine<T> {
-    fn new() -> Self;
-    fn destroy(self);
-    fn clone(&self) -> Self;
-    fn invoke_command(&mut self, command: Command) -> T;
-}
-
 pub struct Replica<T, X> {
+    id: ServerID,
     state: T,  // Would we benefit by using ~T instead?
     slot_num: SlotNum,  // specifies the slot where the next decision resides
     lowest_unused_slot_num: SlotNum,  // specifies the slot which the next proposal uses
@@ -32,10 +17,11 @@ pub struct Replica<T, X> {
     bb: Busybee
 }
 
-impl<'a, T: StateMachine<X>, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, json::Error>> Replica<T, X> {
+impl<'a, T: StateMachine<X>, X: DataConstraint<'a>> Replica<T, X> {
     pub fn new(sid: ServerID, leaders: Vec<ServerID>) -> Replica<T, X> {
         let bb = Busybee::new(sid, common::lookup(sid), 0, BusybeeMapper::new(common::lookup));
         Replica {
+            id: sid,
             state: StateMachine::new(),
             slot_num: 0u64,
             lowest_unused_slot_num: 0u64,
@@ -48,7 +34,8 @@ impl<'a, T: StateMachine<X>, X: Send + Show + Encodable<Encoder<'a>, IoError> + 
 
     pub fn run(mut self) {
         loop {
-            let (_, msg): (ServerID, Message<X>) = self.bb.recv_object().unwrap();
+            let (from, msg): (ServerID, Message<X>) = self.bb.recv_object().unwrap();
+            info!("replica {}: recv {} from {}", self.id, msg, from);
             // TODO: we should verify that:
             // 1. If the message is a Request, then the sender ID matches the id field of the Request.
             // 2. If the message is a Decision, then the sender should indeed be a leader.

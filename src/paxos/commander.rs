@@ -1,18 +1,12 @@
 #[phase(syntax, link)] extern crate log;
 
-use std::fmt::Show;
-use std::io::IoError;
 use std::iter::FromIterator;
 
 use collections::hashmap::HashSet;
 
-use serialize::json;
-use serialize::{Encodable, Decodable};
-use serialize::json::{Encoder, Decoder};
-
 use busybee::Busybee;
 
-use common::{Message, ServerID, Pvalue, Decision, Preempted};
+use common::{DataConstraint, Message, ServerID, Pvalue, Decision, Preempted};
 use common::{P2a, P2b};
 
 pub struct Commander<X> {
@@ -25,7 +19,7 @@ pub struct Commander<X> {
     rx: Receiver<(ServerID, Message<X>)>,
 }
 
-impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, json::Error>> Commander<X> {
+impl<'a, X: DataConstraint<'a>> Commander<X> {
 	pub fn new(commander_id: ServerID, leader_id: ServerID, acceptors: Vec<ServerID>,
         replicas: Vec<ServerID>, pval: Pvalue, bb: Busybee, rx: Receiver<(ServerID, Message<X>)>) -> Commander<X> {
         Commander {

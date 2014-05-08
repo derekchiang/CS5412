@@ -1,18 +1,12 @@
 #[phase(syntax, link)] extern crate log;
 
-use std::fmt::Show;
-use std::io::IoError;
 use std::iter::FromIterator;
 
 use collections::hashmap::HashSet;
 
-use serialize::json;
-use serialize::{Encodable, Decodable};
-use serialize::json::{Encoder, Decoder};
-
 use busybee::Busybee;
 
-use common::{ServerID, BallotNum, Message, Pvalue, Adopted, Preempted};
+use common::{DataConstraint, ServerID, BallotNum, Message, Pvalue, Adopted, Preempted};
 use common::{P1a, P1b};
 
 pub struct Scout<X> {
@@ -24,7 +18,7 @@ pub struct Scout<X> {
     rx: Receiver<(ServerID, Message<X>)>,
 }
 
-impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, json::Error>> Scout<X> {
+impl<'a, X: DataConstraint<'a>> Scout<X> {
     pub fn new(scout_id: ServerID, leader_id: ServerID, acceptors: Vec<ServerID>, bnum: BallotNum, bb: Busybee, rx: Receiver<(ServerID, Message<X>)>) -> Scout<X> {
         Scout {
             id: scout_id,

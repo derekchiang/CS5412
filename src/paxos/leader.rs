@@ -1,17 +1,11 @@
 #[phase(syntax, link)] extern crate log;
 
-use std::fmt::Show;
-use std::io::IoError;
 use std::mem;
-
-use serialize::{Encodable, Decodable};
-use serialize::json::{Encoder, Decoder};
-use serialize::json;
 
 use collections::hashmap::{HashSet, HashMap};
 
 use common;
-use common::{ServerID, SlotNum, BallotNum, Command, Pvalue};
+use common::{DataConstraint, ServerID, SlotNum, BallotNum, Command, Pvalue};
 use common::{Proposal, Message, Propose, Adopted, Preempted, P1b, P2b};
 
 use busybee::{Busybee, BusybeeMapper};
@@ -32,7 +26,7 @@ pub struct Leader<X> {
     chans: HashMap<ServerID, Sender<(ServerID, Message<X>)>>
 }
 
-impl<'a, X: Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, json::Error>> Leader<X> {
+impl<'a, X: DataConstraint<'a>> Leader<X> {
     pub fn new(sid: ServerID, acceptors: Vec<ServerID>, replicas: Vec<ServerID>) -> Leader<X> {
         let bb = Busybee::new(sid, common::lookup(sid), 0, BusybeeMapper::new(common::lookup));
         Leader {
