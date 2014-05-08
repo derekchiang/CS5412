@@ -34,6 +34,7 @@ impl<'a, X: DataConstraint<'a>> Commander<X> {
 	}
 
 	pub fn run(mut self) {
+        info!("a commander is spawned");
         let mut waitfor: HashSet<ServerID> = FromIterator::from_iter(self.acceptors.clone().move_iter());
         for acceptor in self.acceptors.iter() {
             self.bb.send_object::<Message<X>>(acceptor.clone(), P2a(self.id, self.pval.clone()));
@@ -59,7 +60,7 @@ impl<'a, X: DataConstraint<'a>> Commander<X> {
                     }
                 }
 
-                _ => {} //need some debug statement here
+                _ => error!("ERROR: wrong message {} from {}", msg, acceptor_id)
             }
         }
 	}

@@ -26,28 +26,32 @@ impl<'a, X: DataConstraint<'a>> Acceptor<X> {
 
     pub fn run(mut self) {
         loop {
-            let (sender, msg): (ServerID, Message<X>) = self.bb.recv_object().unwrap();
-            info!("leader {}: recv {} from {}", self.id, msg, sender);
-            match msg {
-                P1a(sid, bnum) => {
-                    if bnum > self.ballot_num {
-                        self.ballot_num = bnum;
-                    }
+            match self.bb.recv_object::<Message<X>>() {
+                Ok((from, msg)) => {
+                    info!("acceptor {}: recv {} from {}", self.id, msg, from);
+                    match msg {
+                        P1a(sid, bnum) => {
+                            if bnum > self.ballot_num {
+                                self.ballot_num = bnum;
+                            }
 
-                    self.bb.send_object::<Message<X>>(sender, P1b(sid, self.ballot_num, self.accepted.clone()));
+                            self.bb.send_object::<Message<X>>(from, P1b(sid, self.ballot_num, self.accepted.clone()));
+                        }
+
+                        P2a(sid, pvalue) => {
+                            let (b, _, _) = pvalue.clone();
+                            if b >= self.ballot_num {
+                                self.ballot_num = b;
+                                self.accepted.push(pvalue);
+                            }
+                            self.bb.send_object::<Message<X>>(from, P2b(sid, self.ballot_num));
+                        }
+
+                        _ => error!("ERROR: wrong message {} from {}", msg, from)
+                    }
                 }
 
-                P2a(sid, pvalue) => {
-                    let (b, _, _) = pvalue.clone();
-                    if b >= self.ballot_num {
-                        self.ballot_num = b;
-                        self.accepted.push(pvalue);
-                    }
-                    self.bb.send_object::<Message<X>>(sender, P2b(sid, self.ballot_num));
-                }
-
-//                _ => info!("Receiving a wrong message: {}", msg)
-                _ => {} //need some debug statement here
+                Err(e) => error!("Error: {}", e)
             }
         }
     }

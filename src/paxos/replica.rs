@@ -34,49 +34,53 @@ impl<'a, T: StateMachine<X>, X: DataConstraint<'a>> Replica<T, X> {
 
     pub fn run(mut self) {
         loop {
-            let (from, msg): (ServerID, Message<X>) = self.bb.recv_object().unwrap();
-            info!("replica {}: recv {} from {}", self.id, msg, from);
-            // TODO: we should verify that:
-            // 1. If the message is a Request, then the sender ID matches the id field of the Request.
-            // 2. If the message is a Decision, then the sender should indeed be a leader.
-            match msg {
-                Request(c) => {
-                    self.propose(c);
-                }
-                
-                Decision((snum, comm)) => {
-                    self.decisions.push((snum, comm));
-                    loop {
-                        let mut performed = false;
-                        let mut to_perform: Vec<Command> = vec!();
-                        let mut to_propose: Vec<Command> = vec!();
-                        for dec in self.decisions.iter() {
-                            let (s1, p1) = dec.clone();
-                            if s1 == self.slot_num {
-                                for prop in self.proposals.iter() {
-                                    let (s2, p2) = prop.clone();
-                                    if s2 == self.slot_num && p2 != p1 {
-                                        to_propose.push(p2);
+            match self.bb.recv_object::<Message<X>>() {
+                Ok((from, msg)) => {
+                    info!("replica {}: recv {} from {}", self.id, msg, from);
+                    // TODO: we should verify that:
+                    // 1. If the message is a Request, then the sender ID matches the id field of the Request.
+                    // 2. If the message is a Decision, then the sender should indeed be a leader.
+                    match msg {
+                        Request(c) => {
+                            self.propose(c);
+                        }
+                        
+                        Decision((snum, comm)) => {
+                            self.decisions.push((snum, comm));
+                            loop {
+                                let mut performed = false;
+                                let mut to_perform: Vec<Command> = vec!();
+                                let mut to_propose: Vec<Command> = vec!();
+                                for dec in self.decisions.iter() {
+                                    let (s1, p1) = dec.clone();
+                                    if s1 == self.slot_num {
+                                        for prop in self.proposals.iter() {
+                                            let (s2, p2) = prop.clone();
+                                            if s2 == self.slot_num && p2 != p1 {
+                                                to_propose.push(p2);
+                                            }
+                                        }
+                                        to_perform.push(p1);
+                                        performed = true
                                     }
                                 }
-                                to_perform.push(p1);
-                                performed = true
+
+                                for comm in to_propose.move_iter() {
+                                    self.propose(comm);
+                                }
+
+                                for comm in to_perform.move_iter() {
+                                    self.perform(comm);
+                                }
+
+                                if performed == false { break; }
                             }
                         }
-
-                        for comm in to_propose.move_iter() {
-                            self.propose(comm);
-                        }
-
-                        for comm in to_perform.move_iter() {
-                            self.perform(comm);
-                        }
-
-                        if performed == false { break; }
+                        _ => error!("ERROR: wrong message {} from {}", msg, from)
                     }
                 }
-                _ => {} //need some debug statement here
-//                _ => info!("Receiving a wrong message: {}", msg), 
+
+                Err(e) => error!("ERROR: {}", e)
             }
         }
     }

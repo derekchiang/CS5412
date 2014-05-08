@@ -33,8 +33,12 @@ impl<'a, T: DataConstraint<'a>> Client<T> {
             let (bb_tx, bb_rx) = channel();
             spawn(proc() {
                 let mut bb = bb2;
-                let (sid, msg): (ServerID, Message<T>) = bb.recv_object().unwrap();
-                bb_tx.send((sid, msg));
+                loop {
+                    match bb.recv_object::<Message<T>>() {
+                        Ok((sid, msg)) => bb_tx.send((sid, msg)),
+                        Err(e) => error!("ERROR: {}", e)
+                    }
+                }
             });
 
             let mut chans_map = HashMap::new();
@@ -44,22 +48,26 @@ impl<'a, T: DataConstraint<'a>> Client<T> {
                         chans_map.insert(comm_id, resp_tx);
                     },
 
-                    (_, msg) = bb_rx.recv() => {
+                    (from, msg) = bb_rx.recv() => {
+                        info!("client {}: recv {} from {}", sid, msg, from);
                         // TODO: verify that the message comes from a leader
                         match msg {
                             Response(comm_id, resp) => {
-                                let resp_tx = chans_map.get_copy(&comm_id);
-                                resp_tx.send(resp);
+                                println!("BP0");
+                                match chans_map.pop(&comm_id) {
+                                    Some(resp_tx) => resp_tx.send(resp),
+                                    None => {}
+                                };
                             }
                             
                             x => info!("wrong message: {}", x)
                         }
                     }
-                )
+                );
             }
         });
 
-        client
+        return client;
     }
 
     pub fn call(&mut self, name: ~str, args: Vec<~str>) -> Receiver<T> {

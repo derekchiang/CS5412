@@ -49,18 +49,16 @@ impl<'a, X: DataConstraint<'a>> Scout<X> {
                         if waitfor.len() < (self.acceptors.len() + 1) / 2 {
                             let pvalues_vec = FromIterator::from_iter(pvalues.move_iter());
                             self.bb.send_object::<Message<X>>(self.leader_id, Adopted(bnum, pvalues_vec));
-                            info!("adopting");
                             return;
                         }
                     } else {
                         self.bb.send_object::<Message<X>>(self.leader_id, Preempted(bnum));
-                        info!("preempting");
                         return;
                     }
 
                 }
 
-                _ => {} //need some debug statement here
+                _ => error!("ERROR: wrong message {} from {}", msg, acceptor_id)
             }
         }
     }

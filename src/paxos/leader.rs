@@ -45,85 +45,90 @@ impl<'a, X: DataConstraint<'a>> Leader<X> {
     pub fn run(mut self) {
         self.spawn_scout();
         loop {
-            let (from, msg): (ServerID, Message<X>) = self.bb.recv_object().unwrap();
-            info!("leader {}: recv {} from {}", self.id, msg, from);
-            match msg {
-                Propose(proposal) => {
-                    if !self.proposals.contains(&proposal) {
-                        self.proposals.insert(proposal.clone());
-                        let (s, p) = proposal;
-                        if self.active {
-                            self.spawn_commander((self.ballot_num, s, p));
-                        }
-                    }
-                }
-
-                Adopted(bnum, pvalues) => {
-
-                    let mut tmp: HashMap<SlotNum, (BallotNum, Command)> = HashMap::new();
-                    for (b, s, p) in pvalues.move_iter() {
-                        match tmp.find(&s) {
-                            Some(&(old_b, _)) => {
-                                if b > old_b {
-                                    tmp.insert(s, (b, p));
+            match self.bb.recv_object::<Message<X>>() {
+                Ok((from, msg)) => {
+                    info!("leader {}: recv {} from {}", self.id, msg, from);
+                    match msg {
+                        Propose(proposal) => {
+                            if !self.proposals.contains(&proposal) {
+                                self.proposals.insert(proposal.clone());
+                                let (s, p) = proposal;
+                                if self.active {
+                                    self.spawn_commander((self.ballot_num, s, p));
                                 }
                             }
-                            None => {
-                                tmp.insert(s, (b, p));
+                        }
+
+                        Adopted(bnum, pvalues) => {
+
+                            let mut tmp: HashMap<SlotNum, (BallotNum, Command)> = HashMap::new();
+                            for (b, s, p) in pvalues.move_iter() {
+                                match tmp.find(&s) {
+                                    Some(&(old_b, _)) => {
+                                        if b > old_b {
+                                            tmp.insert(s, (b, p));
+                                        }
+                                    }
+                                    None => {
+                                        tmp.insert(s, (b, p));
+                                    }
+                                }
+                            }
+
+                            let mut tmp2 = HashMap::new();
+                            for (s, (_, p)) in tmp.move_iter() {
+                                tmp2.insert(s, p);
+                            }
+
+                            let mut proposals = HashSet::new();
+                            // swap out self.proposals to avoid partial move of self
+                            mem::swap(&mut proposals, &mut self.proposals);
+                            for (s, p) in proposals.move_iter() {
+                                if tmp2.find(&s).is_none() {
+                                    tmp2.insert(s, p);
+                                }
+                            }
+
+                            let mut tmp3 = HashSet::new();
+                            for (s, p) in tmp2.move_iter() {
+                                tmp3.insert((s, p));
+                            }
+
+                            mem::swap(&mut self.proposals, &mut tmp3);
+
+                            for (s, p) in self.proposals.clone().move_iter() {
+                                self.spawn_commander((bnum, s, p));
+                            }
+
+                            self.active = true;
+                        }
+
+                        Preempted(bnum) => {
+                            if bnum > self.ballot_num {
+                                self.active = false;
+                                let (n, _) = bnum;
+                                self.ballot_num = (n + 1, self.id);
+                                self.spawn_scout();
                             }
                         }
-                    }
 
-                    let mut tmp2 = HashMap::new();
-                    for (s, (_, p)) in tmp.move_iter() {
-                        tmp2.insert(s, p);
-                    }
-
-                    let mut proposals = HashSet::new();
-                    // swap out self.proposals to avoid partial move of self
-                    mem::swap(&mut proposals, &mut self.proposals);
-                    for (s, p) in proposals.move_iter() {
-                        if tmp2.find(&s).is_none() {
-                            tmp2.insert(s, p);
+                        // Forward to scouts
+                        P1b(scout_id, bnum, pvalues) => {
+                            let ch = self.chans.find_copy(&scout_id).unwrap();
+                            ch.send((from, P1b(scout_id, bnum, pvalues)));
                         }
-                    }
 
-                    let mut tmp3 = HashSet::new();
-                    for (s, p) in tmp2.move_iter() {
-                        tmp3.insert((s, p));
-                    }
+                        // Forward to commanders
+                        P2b(commander_id, bnum) => {
+                            let ch = self.chans.find_copy(&commander_id).unwrap();
+                            ch.send((from, P2b(commander_id, bnum)));
+                        }
 
-                    mem::swap(&mut self.proposals, &mut tmp3);
-
-                    for (s, p) in self.proposals.clone().move_iter() {
-                        self.spawn_commander((bnum, s, p));
-                    }
-
-                    self.active = true;
-                }
-
-                Preempted(bnum) => {
-                    if bnum > self.ballot_num {
-                        self.active = false;
-                        let (n, _) = bnum;
-                        self.ballot_num = (n + 1, self.id);
-                        self.spawn_scout();
+                        _ => error!("ERROR: wrong message {} from {}", msg, from)
                     }
                 }
 
-                // Forward to scouts
-                P1b(scout_id, bnum, pvalues) => {
-                    let ch = self.chans.find_copy(&scout_id).unwrap();
-                    ch.send((from, P1b(scout_id, bnum, pvalues)));
-                }
-
-                // Forward to commanders
-                P2b(commander_id, bnum) => {
-                    let ch = self.chans.find_copy(&commander_id).unwrap();
-                    ch.send((from, P2b(commander_id, bnum)));
-                }
-
-                _ => {} //need some debug statement here 
+                Err(e) => error!("ERROR: {}", e)
             }
         }
     }

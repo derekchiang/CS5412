@@ -13,7 +13,7 @@ use serialize::json::{Encoder, Decoder};
 pub trait DataConstraint<'a>: Share + Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, json::Error> {}
 impl<'a, T: Share + Send + Show + Encodable<Encoder<'a>, IoError> + Decodable<Decoder, json::Error>> DataConstraint<'a> for T {}
 
-pub trait StateMachine<T> {
+pub trait StateMachine<T>: Send {
     fn new() -> Self;
     fn destroy(self);
     fn clone(&self) -> Self;

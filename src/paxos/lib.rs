@@ -22,38 +22,42 @@ extern crate sync;
 
 pub use common::StateMachine;
 pub use common::DataConstraint;
+pub use common::Command;
 pub use client::Client;
 
-// pub fn create_cluster<'a, T: DataConstraint<'a>, X: StateMachine>() {
-//     let replica_ids = vec!(2, 3);
-//     let acceptor_ids = vec!(4, 5, 6);
-//     let leader_ids = vec!(7);
+use replica::Replica;
+use acceptor::Acceptor;
+use leader::Leader;
+use client::Client;
 
-//     for rid in replica_ids.iter() {
-//         let replica = Replica::<X, T>::new(rid, leader_ids.clone());
-//         spawn(proc() {
-//             replica.run();
-//         });
-//     }
+pub fn create_cluster<'a, T: DataConstraint<'a>, X: StateMachine<T>>() -> Client<T> {
+    let replica_ids = vec!(2u64 << 32, 3u64 << 32);
+    let acceptor_ids = vec!(4u64 << 32, 5u64 << 32, 6u64 << 32);
+    let leader_ids = vec!(7u64 << 32);
 
-//     for aid in acceptor_ids.iter() {
-//         let acceptor = Acceptor::new(aid);
-//         spawn(proc() {
-//             acceptor.run();
-//         });
-//     }
+    for aid in acceptor_ids.clone().move_iter() {
+        let acceptor = Acceptor::<T>::new(aid);
+        spawn(proc() {
+            acceptor.run();
+        });
+    }
 
-//     for lid in leader_ids.iter() {
-//         let leader = Leader::new(lid);
-//         spawn(proc() {
-//             leader.run();
-//         });
-//     }
+    for lid in leader_ids.clone().move_iter() {
+        let leader = Leader::<T>::new(lid, acceptor_ids.clone(), replica_ids.clone());
+        spawn(proc() {
+            leader.run();
+        });
+    }
 
-//     return Client {
-//         replicas: replica_ids
-//     }
-// }
+    for rid in replica_ids.clone().move_iter() {
+        let replica = Replica::<X, T>::new(rid, leader_ids.clone());
+        spawn(proc() {
+            replica.run();
+        });
+    }
+
+    return Client::<T>::new(1u64 << 32, replica_ids);
+}
 
 mod common;
 mod replica;
