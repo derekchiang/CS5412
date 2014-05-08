@@ -49,10 +49,12 @@ impl<'a, X: DataConstraint<'a>> Scout<X> {
                         if waitfor.len() < (self.acceptors.len() + 1) / 2 {
                             let pvalues_vec = FromIterator::from_iter(pvalues.move_iter());
                             self.bb.send_object::<Message<X>>(self.leader_id, Adopted(bnum, pvalues_vec));
+                            info!("scout {}: exiting", self.id);
                             return;
                         }
                     } else {
                         self.bb.send_object::<Message<X>>(self.leader_id, Preempted(bnum));
+                        info!("scout {}: exiting", self.id);
                         return;
                     }
 

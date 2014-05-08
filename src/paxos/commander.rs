@@ -52,10 +52,12 @@ impl<'a, X: DataConstraint<'a>> Commander<X> {
                             for replica in self.replicas.iter() {
                                 self.bb.send_object::<Message<X>>(replica.clone(), Decision((slot_num, comm.clone())));
                             }
+                            info!("commander {}: exiting", self.id);
                             return;
                         }
                     } else {
                         self.bb.send_object::<Message<X>>(self.leader_id, Preempted(ballot_num));
+                        info!("commander {}: exiting", self.id);
                         return;
                     }
                 }

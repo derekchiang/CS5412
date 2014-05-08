@@ -51,7 +51,7 @@ impl<'a, X: DataConstraint<'a>> Acceptor<X> {
                     }
                 }
 
-                Err(e) => error!("Error: {}", e)
+                Err(e) => error!("ERROR: {}", e)
             }
         }
     }

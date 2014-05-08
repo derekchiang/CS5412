@@ -49,6 +49,8 @@ impl StateMachine<~str> for STM {
 fn main() {
     let mut client = paxos::create_cluster::<~str, STM>();
     for _ in range(0, 10) {
-        println!("Reply: {}", client.call(~"inc", vec!(~"1")).recv());
+        println!("Reply for inc: {}", client.call(~"inc", vec!(~"1")).recv());
     }
+
+    println!("Reply for read: {}", client.call(~"read", vec!()).recv());
 }

@@ -115,13 +115,19 @@ impl<'a, X: DataConstraint<'a>> Leader<X> {
                         // Forward to scouts
                         P1b(scout_id, bnum, pvalues) => {
                             let ch = self.chans.find_copy(&scout_id).unwrap();
-                            ch.send((from, P1b(scout_id, bnum, pvalues)));
+                            let still_open = ch.try_send((from, P1b(scout_id, bnum, pvalues)));
+                            if !still_open {
+                                self.chans.remove(&scout_id);
+                            }
                         }
 
                         // Forward to commanders
                         P2b(commander_id, bnum) => {
                             let ch = self.chans.find_copy(&commander_id).unwrap();
-                            ch.send((from, P2b(commander_id, bnum)));
+                            let still_open = ch.try_send((from, P2b(commander_id, bnum)));
+                            if !still_open {
+                                self.chans.remove(&commander_id);
+                            }
                         }
 
                         _ => error!("ERROR: wrong message {} from {}", msg, from)
