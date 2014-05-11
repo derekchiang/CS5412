@@ -6,7 +6,7 @@ use collections::hashmap::HashSet;
 
 use busybee::Busybee;
 
-use common::{DataConstraint, Message, ServerID, Pvalue, Decision, Preempted};
+use common::{DataConstraint, Message, ServerID, Pvalue, Decision, Preempted, Terminate};
 use common::{P2a, P2b};
 
 pub struct Commander<X> {
@@ -61,6 +61,8 @@ impl<'a, X: DataConstraint<'a>> Commander<X> {
                         return;
                     }
                 }
+
+                Terminate => return,
 
                 _ => error!("ERROR: wrong message {} from {}", msg, acceptor_id)
             }

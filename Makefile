@@ -1,5 +1,5 @@
 RUSTC ?= rustc
-examples = src/examples/lock.rs src/examples/counter.rs
+examples = src/examples/lock.rs src/examples/counter.rs src/examples/fail_counter.rs
 
 all: paxos examples
 

@@ -5,7 +5,7 @@ use time::precise_time_ns;
 use collections::hashmap::HashMap;
 
 use common;
-use common::{DataConstraint, Message, Request, Response, ServerID, Command};
+use common::{DataConstraint, Message, Request, Response, ServerID, Command, Terminate};
 
 use busybee::{Busybee, BusybeeMapper};
 
@@ -13,11 +13,13 @@ pub struct Client<T> {
     id: ServerID,
     bb: Busybee,
     replicas: Vec<ServerID>,
+    acceptors: Vec<ServerID>,
+    leaders: Vec<ServerID>,
     calls_chans_tx: SyncSender<(u64, Sender<T>)>,
 }
 
 impl<'a, T: DataConstraint<'a>> Client<T> {
-    pub fn new(sid: ServerID, rids: Vec<ServerID>) -> Client<T> {
+    pub fn new(sid: ServerID, rids: Vec<ServerID>, aids: Vec<ServerID>, lids: Vec<ServerID>) -> Client<T> {
         let bb = Busybee::new(sid, common::lookup(sid), 0, BusybeeMapper::new(common::lookup));
         let (calls_chans_tx, calls_chans_rx) = sync_channel(0);
 
@@ -25,6 +27,8 @@ impl<'a, T: DataConstraint<'a>> Client<T> {
             id: sid,
             bb: bb,
             replicas: rids,
+            acceptors: aids,
+            leaders: lids,
             calls_chans_tx: calls_chans_tx,
         };
 
@@ -55,7 +59,7 @@ impl<'a, T: DataConstraint<'a>> Client<T> {
                             Response(comm_id, resp) => {
                                 match chans_map.pop(&comm_id) {
                                     Some(resp_tx) => resp_tx.send(resp),
-                                    None => error!("Received a command that is not being waited for: {}", comm_id)
+                                    None => {}
                                 };
                             }
                             
@@ -86,5 +90,23 @@ impl<'a, T: DataConstraint<'a>> Client<T> {
         }
 
         return rx;
+    }
+
+    pub fn terminate_replicas(&mut self, num: uint) {
+        for i in range(0, num) {
+            self.bb.send_object::<Message<T>>(self.replicas.get(i).clone(), Terminate);
+        }
+    }
+
+    pub fn terminate_acceptors(&mut self, num: uint) {
+        for i in range(0, num) {
+            self.bb.send_object::<Message<T>>(self.acceptors.get(i).clone(), Terminate);
+        }
+    }
+
+    pub fn terminate_leaders(&mut self, num: uint) {
+        for i in range(0, num) {
+            self.bb.send_object::<Message<T>>(self.leaders.get(i).clone(), Terminate);
+        }
     }
 }

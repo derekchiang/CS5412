@@ -61,6 +61,7 @@ impl StateMachine<Response> for Lock<Response> {
                 if self.holder.is_none() || self.holder.unwrap() != comm.from {
                     res_tx.send(NOT_LOCKED_BY_YOU);
                 } else {
+                    res_tx.send(UNLOCK_SUCCESS);
                     match self.waiting.shift() {
                         Some(s) => {
                             self.holder = Some(s);
@@ -72,7 +73,6 @@ impl StateMachine<Response> for Lock<Response> {
                             self.holder = None;
                         }
                     }
-                    res_tx.send(UNLOCK_SUCCESS);
                 }
             }
 

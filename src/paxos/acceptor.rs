@@ -2,7 +2,7 @@
 
 use common;
 use common::{DataConstraint, ServerID, BallotNum, Pvalue, Message};
-use common::{P1a, P1b, P2a, P2b};
+use common::{P1a, P1b, P2a, P2b, Terminate};
 
 use busybee::{Busybee, BusybeeMapper};
 
@@ -46,6 +46,8 @@ impl<'a, X: DataConstraint<'a>> Acceptor<X> {
                             }
                             self.bb.send_object::<Message<X>>(from, P2b(sid, self.ballot_num));
                         }
+
+                        Terminate => return,
 
                         _ => error!("ERROR: wrong message {} from {}", msg, from)
                     }

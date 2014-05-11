@@ -6,7 +6,7 @@ use collections::hashmap::{HashSet, HashMap};
 
 use common;
 use common::{DataConstraint, ServerID, SlotNum, BallotNum, Command, Pvalue};
-use common::{Proposal, Message, Propose, Adopted, Preempted, P1b, P2b};
+use common::{Proposal, Message, Propose, Adopted, Preempted, P1b, P2b, Terminate};
 
 use busybee::{Busybee, BusybeeMapper};
 
@@ -128,6 +128,15 @@ impl<'a, X: DataConstraint<'a>> Leader<X> {
                             if !still_open {
                                 self.chans.remove(&commander_id);
                             }
+                        }
+
+                        Terminate => {
+                            // Terminate all scouts and commanders
+                            for chan in self.chans.values() {
+                                chan.send((0, Terminate));
+                            }
+
+                            return;
                         }
 
                         _ => error!("ERROR: wrong message {} from {}", msg, from)

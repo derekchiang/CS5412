@@ -60,17 +60,22 @@ pub fn new_cluster<'a, T: DataConstraint<'a>, X: StateMachine<T>>() -> Cluster<T
     }
 
     return Cluster {
-        replicas: replica_ids
+        replicas: replica_ids,
+        acceptors: acceptor_ids,
+        leaders: leader_ids,
     };
 }
 
 pub struct Cluster<T> {
-    replicas: Vec<ServerID>
+    replicas: Vec<ServerID>,
+    acceptors: Vec<ServerID>,
+    leaders: Vec<ServerID>,
 }
 
 impl<'a, T: DataConstraint<'a>> Cluster<T> {
     pub fn new_client(&self, sid: ServerID) -> Client<T> {
-        return Client::<T>::new(sid, self.replicas.clone());
+        return Client::<T>::new(sid,
+            self.replicas.clone(), self.acceptors.clone(), self.leaders.clone());
     }
 }
 

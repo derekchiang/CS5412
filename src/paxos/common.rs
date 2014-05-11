@@ -66,6 +66,8 @@ pub enum Message<T> {
     Adopted(BallotNum, Vec<Pvalue>), //scout to leader
 
     Preempted(BallotNum), //scout or commander to leader
+
+    Terminate
 }
 
 pub fn lookup(server_id: ServerID) -> SocketAddr {

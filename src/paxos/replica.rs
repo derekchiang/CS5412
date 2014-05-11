@@ -2,7 +2,7 @@
 
 use common;
 use common::{DataConstraint, StateMachine, ServerID, Command, Message, SlotNum, Proposal};
-use common::{Request, Decision, Propose, Response};
+use common::{Request, Decision, Propose, Response, Terminate};
 
 use busybee::{Busybee, BusybeeMapper};
 
@@ -81,6 +81,9 @@ impl<'a, T: StateMachine<X>, X: DataConstraint<'a>> Replica<T, X> {
                                 if performed == false { break; }
                             }
                         }
+
+                        Terminate => return,
+
                         _ => error!("ERROR: wrong message {} from {}", msg, from)
                     }
                 }

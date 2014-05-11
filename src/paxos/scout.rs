@@ -6,7 +6,7 @@ use collections::hashmap::HashSet;
 
 use busybee::Busybee;
 
-use common::{DataConstraint, ServerID, BallotNum, Message, Pvalue, Adopted, Preempted};
+use common::{DataConstraint, ServerID, BallotNum, Message, Pvalue, Adopted, Preempted, Terminate};
 use common::{P1a, P1b};
 
 pub struct Scout<X> {
@@ -59,6 +59,8 @@ impl<'a, X: DataConstraint<'a>> Scout<X> {
                     }
 
                 }
+
+                Terminate => return,
 
                 _ => error!("ERROR: wrong message {} from {}", msg, acceptor_id)
             }
