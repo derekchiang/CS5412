@@ -19,10 +19,13 @@ extern crate uuid;
 extern crate rand;
 extern crate busybee;
 extern crate sync;
+extern crate time;
 
 pub use common::StateMachine;
 pub use common::DataConstraint;
 pub use common::Command;
+pub use common::CommandID;
+pub use common::ServerID;
 pub use client::Client;
 
 use replica::Replica;
@@ -30,10 +33,10 @@ use acceptor::Acceptor;
 use leader::Leader;
 use client::Client;
 
-pub fn create_cluster<'a, T: DataConstraint<'a>, X: StateMachine<T>>() -> Client<T> {
-    let replica_ids = vec!(2u64 << 32, 3u64 << 32);
-    let acceptor_ids = vec!(4u64 << 32, 5u64 << 32, 6u64 << 32);
-    let leader_ids = vec!(7u64 << 32);
+pub fn new_cluster<'a, T: DataConstraint<'a>, X: StateMachine<T>>() -> Cluster<T> {
+    let replica_ids = vec!(1u64 << 32, 2u64 << 32);
+    let acceptor_ids = vec!(3u64 << 32, 4u64 << 32, 5u64 << 32);
+    let leader_ids = vec!(6u64 << 32);
 
     for aid in acceptor_ids.clone().move_iter() {
         let acceptor = Acceptor::<T>::new(aid);
@@ -56,7 +59,19 @@ pub fn create_cluster<'a, T: DataConstraint<'a>, X: StateMachine<T>>() -> Client
         });
     }
 
-    return Client::<T>::new(1u64 << 32, replica_ids);
+    return Cluster {
+        replicas: replica_ids
+    };
+}
+
+pub struct Cluster<T> {
+    replicas: Vec<ServerID>
+}
+
+impl<'a, T: DataConstraint<'a>> Cluster<T> {
+    pub fn new_client(&self, sid: ServerID) -> Client<T> {
+        return Client::<T>::new(sid, self.replicas.clone());
+    }
 }
 
 mod common;

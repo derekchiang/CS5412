@@ -17,7 +17,7 @@ pub trait StateMachine<T>: Send {
     fn new() -> Self;
     fn destroy(self);
     fn clone(&self) -> Self;
-    fn invoke_command(&mut self, command: Command) -> T;
+    fn invoke_command(&mut self, res_tx: Sender<T>, comm: Command);
 }
 
 pub type ServerID = u64;
@@ -39,7 +39,7 @@ pub struct Command {
 
 impl Eq for Command {
     fn eq(&self, that: &Command) -> bool {
-        self.id == that.id
+        self.from == that.from && self.id == that.id
     }
 }
 
@@ -93,5 +93,3 @@ pub fn lookup(server_id: ServerID) -> SocketAddr {
     }
     fail!("Invalid server id: {}", server_id);
 }
-
-// static mapper: BusybeeMapper = BusybeeMapper::new(lookup);

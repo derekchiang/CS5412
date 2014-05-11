@@ -3,54 +3,60 @@ extern crate paxos;
 use paxos::StateMachine;
 use paxos::Command;
 
-struct STM {
+struct Counter {
     counter: uint
 }
 
-impl StateMachine<~str> for STM {
-    fn new() -> STM {
-        return STM {
+impl StateMachine<~str> for Counter {
+    fn new() -> Counter {
+        return Counter {
             counter: 0
         }
     }
 
     fn destroy(self) {}
 
-    fn clone(&self) -> STM {
-        STM {
+    fn clone(&self) -> Counter {
+        Counter {
             counter: self.counter
         }
     }
 
-    fn invoke_command(&mut self, command: Command) -> ~str {
-        let mut command = command;
-        match command.name.as_slice() {
+    fn invoke_command(&mut self, res_tx: Sender<~str>, comm: Command) {
+        let mut comm = comm;
+        match comm.name.as_slice() {
             "inc" => {
-                self.counter += from_str(command.args.remove(0).unwrap()).unwrap();
-                ~"ok"
+                self.counter += from_str(comm.args.remove(0).unwrap()).unwrap();
+               res_tx.send(~"ok");
             }
 
             "dec" => {
-                self.counter -= from_str(command.args.remove(0).unwrap()).unwrap();
-                ~"ok"
+                self.counter -= from_str(comm.args.remove(0).unwrap()).unwrap();
+                res_tx.send(~"ok");
             }
 
             "read" => {
-                format!("{}", self.counter)
+                res_tx.send(format!("{}", self.counter));
             }
 
             _ => {
-                ~"unexpected"
+               res_tx.send(~"unexpected");
             }
         }
     }
 }
 
 fn main() {
-    let mut client = paxos::create_cluster::<~str, STM>();
+    let cluster = paxos::new_cluster::<~str, Counter>();
+    let mut client = cluster.new_client(7u64 << 32);
+    
     for _ in range(0, 10) {
-        println!("Reply for inc: {}", client.call(~"inc", vec!(~"1")).recv());
+        client.call(~"inc", vec!(~"1")).recv();
     }
+    println!("Reply for read: {}", client.call(~"read", vec!()).recv());
 
+    for _ in range(0, 10) {
+        client.call(~"dec", vec!(~"1")).recv();
+    }
     println!("Reply for read: {}", client.call(~"read", vec!()).recv());
 }

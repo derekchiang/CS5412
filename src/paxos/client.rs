@@ -1,5 +1,7 @@
 #[phase(syntax, link)] extern crate log;
 
+use time::precise_time_ns;
+
 use collections::hashmap::HashMap;
 
 use common;
@@ -10,22 +12,20 @@ use busybee::{Busybee, BusybeeMapper};
 pub struct Client<T> {
     id: ServerID,
     bb: Busybee,
-    next_comm_id: u64,
     replicas: Vec<ServerID>,
-    calls_chans_tx: Sender<(u64, Sender<T>)>
+    calls_chans_tx: SyncSender<(u64, Sender<T>)>,
 }
 
 impl<'a, T: DataConstraint<'a>> Client<T> {
     pub fn new(sid: ServerID, rids: Vec<ServerID>) -> Client<T> {
         let bb = Busybee::new(sid, common::lookup(sid), 0, BusybeeMapper::new(common::lookup));
-        let (calls_chans_tx, calls_chans_rx) = channel();
+        let (calls_chans_tx, calls_chans_rx) = sync_channel(0);
 
         let client = Client {
             id: sid,
             bb: bb,
-            next_comm_id: 0,
             replicas: rids,
-            calls_chans_tx: calls_chans_tx
+            calls_chans_tx: calls_chans_tx,
         };
 
         let bb2 = bb.clone();
@@ -53,10 +53,9 @@ impl<'a, T: DataConstraint<'a>> Client<T> {
                         // TODO: verify that the message comes from a leader
                         match msg {
                             Response(comm_id, resp) => {
-                                println!("BP0");
                                 match chans_map.pop(&comm_id) {
                                     Some(resp_tx) => resp_tx.send(resp),
-                                    None => {}
+                                    None => error!("Received a command that is not being waited for: {}", comm_id)
                                 };
                             }
                             
@@ -73,11 +72,10 @@ impl<'a, T: DataConstraint<'a>> Client<T> {
     pub fn call(&mut self, name: ~str, args: Vec<~str>) -> Receiver<T> {
         let comm = Command {
             from: self.id,
-            id: self.next_comm_id,
+            id: precise_time_ns(),  // weird bug happens if we simply generate a random u64... seems like a Rust bug.
             name: name,
             args: args
         };
-        self.next_comm_id += 1;
 
         // We want to set up receivers before sending the command
         let (tx, rx) = channel();

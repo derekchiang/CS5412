@@ -1,4 +1,5 @@
 RUSTC ?= rustc
+examples = src/examples/lock.rs src/examples/counter.rs
 
 all: paxos examples
 
@@ -8,7 +9,7 @@ paxos:
 
 examples:
 	mkdir -p lib bin
-	$(RUSTC) -L ../rust-busybee/build -L lib --out-dir bin src/examples/counter.rs
+	$(foreach example, $(examples), $(RUSTC) -L ../rust-busybee/build -L lib --out-dir bin $(example);)
 
 test: paxos
 	$(RUSTC) src/paxos/lib.rs -L lib -L ../rust-busybee/build --test -o bin/test

@@ -14,12 +14,15 @@ pub struct Replica<T, X> {
     proposals: Vec<Proposal>,
     decisions: Vec<Proposal>,
     leaders: Vec<ServerID>,
+    res_tx: Sender<(ServerID, Message<X>)>,
+    res_rx: Receiver<(ServerID, Message<X>)>,
     bb: Busybee
 }
 
 impl<'a, T: StateMachine<X>, X: DataConstraint<'a>> Replica<T, X> {
     pub fn new(sid: ServerID, leaders: Vec<ServerID>) -> Replica<T, X> {
         let bb = Busybee::new(sid, common::lookup(sid), 0, BusybeeMapper::new(common::lookup));
+        let (res_tx, res_rx) = channel();
         Replica {
             id: sid,
             state: StateMachine::new(),
@@ -28,6 +31,8 @@ impl<'a, T: StateMachine<X>, X: DataConstraint<'a>> Replica<T, X> {
             proposals: vec!(),
             decisions: vec!(),
             leaders: leaders,
+            res_tx: res_tx,
+            res_rx: res_rx,
             bb: bb
         }
     }
@@ -111,9 +116,17 @@ impl<'a, T: StateMachine<X>, X: DataConstraint<'a>> Replica<T, X> {
         if found {
             self.slot_num += 1;
         } else {
-            let res = self.state.invoke_command(comm.clone());
+            let (res_tx, res_rx) = channel();
+            let bb = self.bb.clone();
+            let from = comm.from.clone();
+            let cid = comm.id.clone();
+            self.state.invoke_command(res_tx, comm);
+            spawn(proc() {
+                let mut bb = bb;
+                let res = res_rx.recv();
+                bb.send_object(from, Response(cid, res));
+            });
             self.slot_num += 1;
-            self.bb.send_object(comm.from, Response(comm.id, res));
         }
 
         if self.lowest_unused_slot_num < self.slot_num {

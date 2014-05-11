@@ -18,44 +18,44 @@ use busybee::{Busybee, BusybeeMapper, TIMEOUT};
 
 type Msg = Message<~str>;
 
-struct STM {
+struct Counter {
     counter: uint
 }
 
-impl StateMachine<~str> for STM {
-    fn new() -> STM {
-        return STM {
+impl StateMachine<~str> for Counter {
+    fn new() -> Counter {
+        return Counter {
             counter: 0
         }
     }
 
     fn destroy(self) {}
 
-    fn clone(&self) -> STM {
-        STM {
+    fn clone(&self) -> Counter {
+        Counter {
             counter: self.counter
         }
     }
 
-    fn invoke_command(&mut self, command: Command) -> ~str {
-        let mut command = command;
-        match command.name.as_slice() {
+    fn invoke_command(&mut self, res_tx: Sender<~str>, comm: Command) {
+        let mut comm = comm;
+        match comm.name.as_slice() {
             "inc" => {
-                self.counter += from_str(command.args.remove(0).unwrap()).unwrap();
-                ~"ok"
+                self.counter += from_str(comm.args.remove(0).unwrap()).unwrap();
+               res_tx.send(~"ok");
             }
 
             "dec" => {
-                self.counter -= from_str(command.args.remove(0).unwrap()).unwrap();
-                ~"ok"
+                self.counter -= from_str(comm.args.remove(0).unwrap()).unwrap();
+                res_tx.send(~"ok");
             }
 
             "read" => {
-                format!("{}", self.counter)
+                res_tx.send(format!("{}", self.counter));
             }
 
             _ => {
-                ~"unexpected"
+               res_tx.send(~"unexpected");
             }
         }
     }
@@ -195,7 +195,7 @@ fn test_replica() {
     let rid = 1u64 << 32;
     let id = 2u64 << 32;
 
-    let replica = Replica::<STM, ~str>::new(rid, vec!(id));
+    let replica = Replica::<Counter, ~str>::new(rid, vec!(id));
     spawn(proc() {
         replica.run()
     });
@@ -301,8 +301,6 @@ fn test_leader() {
     use std::io::stdio::stdout;
     let mut stdout = stdout();
 
-    println!("BP1");
-
     let lid = 1u64 << 32;
     let id = 2u64 << 32;
 
@@ -316,9 +314,7 @@ fn test_leader() {
 
     // Test case 1:
     // At the beginning, the leader should spawn a scout, which sends us a P2a message.
-    println!("BP2");
     let (sid, msg): (ServerID, Msg) = bb.recv_object().unwrap();
-    println!("BP3");
     assert_eq!(sid, lid);
     match msg {
         P1a(scout_id, bnum) => {
@@ -344,10 +340,8 @@ fn test_leader() {
         args: vec!(~"3")
     };
     bb.send_object::<Msg>(lid, Propose((0, cmd.clone())));
-    println!("BP4");
 
     let (sid, msg): (ServerID, Msg) = bb.recv_object().unwrap();
-    println!("BP5");
     assert_eq!(sid, lid);
     match msg {
         P2a(commander_id, pval) => {
@@ -365,9 +359,7 @@ fn test_leader() {
 
     // Test case 4:
     // Now, the commander should decide on the proposal and sends us a response
-    println!("BP6");
     let (sid, msg): (ServerID, Msg) = bb.recv_object().unwrap();
-    println!("BP7");
     assert_eq!(sid, lid);
     match msg {
         Decision((snum, comm)) => {
