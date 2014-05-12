@@ -4,6 +4,9 @@ extern crate paxos;
 extern crate collections;
 extern crate serialize;
 extern crate rand;
+extern crate time;
+
+use time::precise_time_ns;
 
 use std::io::timer::sleep;
 
@@ -23,10 +26,10 @@ struct Lock<T> {
 
 #[deriving(Encodable, Decodable, Show)]
 enum Response {
-    LOCK_SUCCESS,
-    UNLOCK_SUCCESS,
-    NOT_LOCKED_BY_YOU,
-    UNEXPECTED_COMMAND
+    LOCK_SUCCESS(u64),
+    UNLOCK_SUCCESS(u64),
+    NOT_LOCKED_BY_YOU(u64),
+    UNEXPECTED_COMMAND(u64)
 }
 
 impl StateMachine<Response> for Lock<Response> {
@@ -53,7 +56,7 @@ impl StateMachine<Response> for Lock<Response> {
             "lock" => {
                 if self.holder.is_none() {
                     self.holder = Some(comm.from);
-                    res_tx.send(LOCK_SUCCESS);
+                    res_tx.send(LOCK_SUCCESS(precise_time_ns()));
                 } else {
                     self.waiting.push(comm.from);
                     self.waiting_txs.insert(comm.from, res_tx);
@@ -62,14 +65,14 @@ impl StateMachine<Response> for Lock<Response> {
 
             "unlock" => {
                 if self.holder.is_none() || self.holder.unwrap() != comm.from {
-                    res_tx.send(NOT_LOCKED_BY_YOU);
+                    res_tx.send(NOT_LOCKED_BY_YOU(precise_time_ns()));
                 } else {
-                    res_tx.send(UNLOCK_SUCCESS);
+                    res_tx.send(UNLOCK_SUCCESS(precise_time_ns()));
                     match self.waiting.shift() {
                         Some(s) => {
                             self.holder = Some(s);
                             let res_tx = self.waiting_txs.pop(&s).unwrap();
-                            res_tx.send(LOCK_SUCCESS);
+                            res_tx.send(LOCK_SUCCESS(precise_time_ns()));
                         }
 
                         None => {
@@ -80,7 +83,7 @@ impl StateMachine<Response> for Lock<Response> {
             }
 
             _ => {
-                res_tx.send(UNEXPECTED_COMMAND);
+                res_tx.send(UNEXPECTED_COMMAND(precise_time_ns()));
             }
         }
     }
